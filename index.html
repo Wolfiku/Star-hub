@@ -9,12 +9,12 @@
   <link rel="apple-touch-icon" href="icons/icon-192.png">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Star-Hub – ZIP-Version</title>
-  <!-- Externe CSS-Datei -->
   <link rel="stylesheet" href="styles.css">
   <!-- JSZip zum Verarbeiten der ZIP-Datei -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.0/jszip.min.js"></script>
 </head>
 <body>
+  <!-- Header "Star-hub" -->
   <div id="main-header">Star-hub</div>
   <div class="container">
     <div class="content" id="main-content">
@@ -22,7 +22,7 @@
       <div id="upload-container">
         <h2>Willkommen bei Star-hub</h2>
         <p>Bitte wähle ein Gameplack (ZIP-Format) aus</p>
-        <div id="drop-zone">Ziehe deine ZIP-Datei hierher oder tippe hier, um eine Datei auszuwählen</div>
+        <div id="drop-zone">ZIP-Datei hierher ziehen oder klicken</div>
       </div>
       <!-- Unsichtbarer Datei-Input -->
       <input type="file" id="zip-input" accept=".zip" style="display:none;">
@@ -30,16 +30,19 @@
       <button id="settings-button">Einstellungen</button>
       <!-- Hier werden die HTML-Dateien (und Favoriten) aufgelistet -->
       <ul id="program-list"></ul>
-      <audio id="audio-player"></audio>
+      <!-- (Audio-Player bleibt vorhanden, aber nicht sichtbar) -->
+      <audio id="audio-player" style="display:none;"></audio>
     </div>
-    <footer id="folder-info"></footer>
+    <footer id="folder-info">Star-tools a @wolfikuproduction | version : 2</footer>
   </div>
   
+  <!-- Fullscreen-Container -->
   <div id="fullscreen-container">
     <iframe id="fullscreen-iframe"></iframe>
     <button id="exit-fullscreen">Stop</button>
   </div>
   
+  <!-- Modal für Einstellungen (ohne Musiklautstärke) -->
   <div id="settings-modal">
     <div class="modal-content">
       <span class="close-modal">&times;</span>
@@ -52,17 +55,13 @@
         </select>
       </div>
       <div class="settings-group">
-        <label for="music-volume">Musiklautstärke:</label>
-        <input type="range" id="music-volume" min="0" max="1" step="0.01" value="0.5">
-      </div>
-      <div class="settings-group">
         <button id="delete-all-data">Alle Daten löschen</button>
       </div>
     </div>
   </div>
   
+  <!-- Service Worker Registrierung -->
   <script>
-    // Service Worker Registrierung
     if ("serviceWorker" in navigator) {
       navigator.serviceWorker.register("service-worker.js")
           .then(() => console.log("Service Worker registriert"))
@@ -73,14 +72,15 @@
   <!-- Haupt-Script -->
   <script>
     /*
-      Diese Version verwendet ein Drag & Drop-System für den ZIP-Upload.
-      Der Benutzer lädt eine ZIP-Datei hoch, die alle HTML-Dateien enthält.
-      Doppelte Dateinamen werden in listHTMLFilesFromZip dedupliziert.
-      Favoriten, Einstellungen und Fullscreen-Funktionalität bleiben erhalten.
+      Diese Version verwendet ein dauerhaft sichtbares Drag & Drop-Feld für den ZIP-Upload.
+      Neue ZIP-Dateien werden in die bestehende Sammlung integriert, sodass neue Spiele
+      einfach zu den bereits vorhandenen hinzugefügt werden. Doppelte Dateinamen werden dedupliziert.
+      Favoriten, Einstellungen und der Fullscreen-Modus bleiben erhalten.
     */
     
-    let globalZip = null;
-    let globalFavorites = {};
+    let globalZip = null;           // Wird beim ersten Upload initialisiert, neue Dateien werden hinzugefügt
+    let globalGameFiles = {};       // Sammlung aller HTML-Dateien (Key = Dateipfad)
+    let globalFavorites = {};       // Favoriten aus IndexedDB
 
     function wrapZipFile(zipFile) {
       return {
@@ -90,31 +90,28 @@
       };
     }
 
-    // Drop-Zone einrichten
+    // Elemente abrufen
     const dropZone = document.getElementById("drop-zone");
     const zipInput = document.getElementById("zip-input");
 
+    // Drag & Drop Events
     dropZone.addEventListener("dragover", (e) => {
       e.preventDefault();
       dropZone.classList.add("dragover");
     });
-
     dropZone.addEventListener("dragleave", (e) => {
       e.preventDefault();
       dropZone.classList.remove("dragover");
     });
-
     dropZone.addEventListener("drop", async (e) => {
       e.preventDefault();
       dropZone.classList.remove("dragover");
       const file = e.dataTransfer.files[0];
       processZipFile(file);
     });
-
     dropZone.addEventListener("click", () => {
       zipInput.click();
     });
-
     zipInput.addEventListener("change", async (e) => {
       const file = e.target.files[0];
       processZipFile(file);
@@ -123,32 +120,36 @@
     async function processZipFile(file) {
       if (!file) return;
       const jszip = new JSZip();
+      let newZip = null;
       try {
-        globalZip = await jszip.loadAsync(file);
+        newZip = await jszip.loadAsync(file);
       } catch (e) {
         alert("Fehler beim Laden der ZIP-Datei: " + e.message);
         return;
       }
-      // Nach Upload: Drop-Bereich und Header ausblenden
-      document.getElementById("upload-container").style.display = "none";
-      document.getElementById("main-header").style.display = "none";
-      document.getElementById("folder-info").textContent = "Star-tools a @wolfikuproduction | version : ZIP";
-      await listHTMLFilesFromZip();
+      // Falls globalGameFiles bereits existieren, werden neue Dateien hinzugefügt
+      for (const key in newZip.files) {
+        if (!newZip.files[key].dir && key.toLowerCase().endsWith(".html")) {
+          if (!(key in globalGameFiles)) {
+            globalGameFiles[key] = newZip.files[key];
+          }
+        }
+      }
+      // Falls dies der erste Upload ist, bleibt upload-container sichtbar (weil der Drop-Bereich immer aktiv ist)
+      await listHTMLFilesFromGlobalFiles();
     }
 
-    // Liste alle HTML-Dateien aus der ZIP auf, dedupliziere gleiche Dateinamen
-    async function listHTMLFilesFromZip() {
+    // Listet alle HTML-Dateien aus globalGameFiles auf (dedupliziert nach Dateinamen)
+    async function listHTMLFilesFromGlobalFiles() {
       const programListElem = document.getElementById("program-list");
       programListElem.innerHTML = "";
       const sortingOption = localStorage.getItem("sortingOption") || "default";
       let files = [];
-      for (const key in globalZip.files) {
-        if (!globalZip.files[key].dir && key.toLowerCase().endsWith(".html")) {
-          const filename = key.split("/").pop().replace(/\.html$/i, "");
-          files.push({ title: filename, filePath: key });
-        }
+      for (const key in globalGameFiles) {
+        const filename = key.split("/").pop().replace(/\.html$/i, "");
+        files.push({ title: filename, filePath: key });
       }
-      // Dedupliziere Dateien basierend auf dem Titel
+      // Dedupliziere basierend auf dem Titel
       let uniqueFiles = {};
       files.forEach(file => {
         if (!uniqueFiles[file.title]) {
@@ -156,7 +157,6 @@
         }
       });
       files = Object.values(uniqueFiles);
-      
       if (sortingOption === "alphabetical") {
         files.sort((a, b) => a.title.localeCompare(b.title));
       }
@@ -188,10 +188,10 @@
       li.className = "normal-program";
       li.textContent = title;
       const favId = "file_" + title;
-      li.appendChild(createFavoriteIcon(favId, wrapZipFile(globalZip.file(filePath)), "normal", title));
+      li.appendChild(createFavoriteIcon(favId, wrapZipFile(globalGameFiles[filePath]), "normal", title));
       li.onclick = async () => {
         try {
-          const blob = await globalZip.file(filePath).async("blob");
+          const blob = await globalGameFiles[filePath].async("blob");
           const htmlBlob = new Blob([blob], { type: "text/html" });
           const url = URL.createObjectURL(htmlBlob);
           await enterFullscreen(url);
@@ -289,45 +289,6 @@
       return span;
     }
 
-    async function renderFavorites() {
-      const programListElem = document.getElementById("program-list");
-      const existingFavSection = document.getElementById("favorites-section");
-      if (existingFavSection) {
-        existingFavSection.remove();
-      }
-      const favorites = await getAllFavorites();
-      globalFavorites = {};
-      favorites.forEach(f => globalFavorites[f.id] = f);
-      if (favorites.length > 0) {
-        const favSection = document.createElement("div");
-        favSection.id = "favorites-section";
-        const header = document.createElement("div");
-        header.className = "favorites-header";
-        header.textContent = "Favoriten";
-        favSection.appendChild(header);
-        favorites.forEach(fav => {
-          const li = document.createElement("li");
-          li.className = "normal-program";
-          li.textContent = fav.title;
-          li.appendChild(createFavoriteIcon(fav.id, fav.filePath, "normal", fav.title));
-          li.onclick = async () => {
-            try {
-              const blob = await globalZip.file(fav.filePath).async("blob");
-              const htmlBlob = new Blob([blob], { type: "text/html" });
-              const url = URL.createObjectURL(htmlBlob);
-              await enterFullscreen(url);
-            } catch (err) {
-              alert("Das Spiel konnte nicht geladen werden.");
-              await removeFavorite(fav.id);
-              renderFavorites();
-            }
-          };
-          favSection.appendChild(li);
-        });
-        programListElem.prepend(favSection);
-      }
-    }
-
     const settingsButton = document.getElementById("settings-button");
     const settingsModal = document.getElementById("settings-modal");
     const closeModal = document.querySelector(".close-modal");
@@ -340,8 +301,6 @@
         settingsModal.style.display = "none";
         const sortingOption = document.getElementById("sorting-option").value;
         localStorage.setItem("sortingOption", sortingOption);
-        const volume = document.getElementById("music-volume").value;
-        document.getElementById("audio-player").volume = volume;
       });
     }
     window.addEventListener("click", (e) => {
@@ -349,19 +308,28 @@
         settingsModal.style.display = "none";
         const sortingOption = document.getElementById("sorting-option").value;
         localStorage.setItem("sortingOption", sortingOption);
-        const volume = document.getElementById("music-volume").value;
-        document.getElementById("audio-player").volume = volume;
       }
     });
 
     document.getElementById("delete-all-data").addEventListener("click", async () => {
       if (confirm("Alle lokalen Daten (Favoriten, Einstellungen) wirklich löschen?")) {
         localStorage.removeItem("sortingOption");
-        await clearAllFavorites();
+        await removeAllFavorites();
         alert("Alle Daten wurden gelöscht.");
         renderFavorites();
       }
     });
+
+    async function removeAllFavorites() {
+      const db = await openFavoritesDB();
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction("favorites", "readwrite");
+        const store = tx.objectStore("favorites");
+        const req = store.clear();
+        req.onsuccess = () => resolve();
+        req.onerror = () => reject(req.error);
+      });
+    }
   </script>
   
   <script>
