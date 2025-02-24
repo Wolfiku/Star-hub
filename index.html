@@ -9,26 +9,36 @@
   <link rel="apple-touch-icon" href="icons/icon-192.png">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Star-Hub – ZIP-Version</title>
+  <!-- Externe CSS-Datei -->
   <link rel="stylesheet" href="styles.css">
+  <!-- JSZip zum Verarbeiten der ZIP-Datei -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.0/jszip.min.js"></script>
 </head>
 <body>
+  <!-- Header "Star-hub" – wird nach dem Upload ausgeblendet -->
   <div id="main-header">Star-hub</div>
   <div class="container">
     <div class="content" id="main-content">
-      <input type="file" id="zip-input" accept=".zip">
+      <!-- Drag & Drop Bereich -->
+      <div id="drop-zone">Ziehe deine ZIP-Datei hierher oder tippe hier, um eine Datei auszuwählen</div>
+      <!-- Unsichtbares Datei-Input (wird vom Drop-Bereich ausgelöst) -->
+      <input type="file" id="zip-input" accept=".zip" style="display:none;">
+      <!-- Einstellungen-Button -->
       <button id="settings-button">Einstellungen</button>
+      <!-- Hier werden die HTML-Dateien (und Favoriten) aufgelistet -->
       <ul id="program-list"></ul>
       <audio id="audio-player"></audio>
     </div>
     <footer id="folder-info"></footer>
   </div>
   
+  <!-- Fullscreen-Container für die Anzeige -->
   <div id="fullscreen-container">
     <iframe id="fullscreen-iframe"></iframe>
     <button id="exit-fullscreen">Stop</button>
   </div>
-
+  
+  <!-- Modal für Einstellungen -->
   <div id="settings-modal">
     <div class="modal-content">
       <span class="close-modal">&times;</span>
@@ -50,10 +60,27 @@
     </div>
   </div>
   
+  <!-- Service Worker Registrierung -->
   <script>
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("service-worker.js")
+          .then(() => console.log("Service Worker registriert"))
+          .catch((err) => console.log("Service Worker Fehler:", err));
+    }
+  </script>
+  
+  <!-- Haupt-Script -->
+  <script>
+    /* 
+      Diese Version verwendet ein Drag & Drop-System für den ZIP-Upload.
+      Der Benutzer kann die ZIP-Datei in den Drop-Bereich ziehen oder darauf tippen, um eine Datei auszuwählen.
+      Alle HTML-Dateien in der ZIP werden dann aufgelistet, Favoriten, Einstellungen und Fullscreen bleiben erhalten.
+    */
+
     let globalZip = null;
     let globalFavorites = {};
 
+    // Wrapper-Funktion, um ein ZIP-Dateiobjekt in ein fileHandle-ähnliches Objekt zu verpacken.
     function wrapZipFile(zipFile) {
       return {
         getFile: async function() {
@@ -62,8 +89,41 @@
       };
     }
 
-    document.getElementById("zip-input").addEventListener("change", async (event) => {
-      const file = event.target.files[0];
+    // Drop-Zone und Datei-Input einrichten
+    const dropZone = document.getElementById("drop-zone");
+    const zipInput = document.getElementById("zip-input");
+
+    // Drag-Over event verhindern, damit der Browser die Datei nicht öffnet
+    dropZone.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      dropZone.classList.add("dragover");
+    });
+
+    dropZone.addEventListener("dragleave", (e) => {
+      e.preventDefault();
+      dropZone.classList.remove("dragover");
+    });
+
+    // Beim Drop die Datei verarbeiten
+    dropZone.addEventListener("drop", async (e) => {
+      e.preventDefault();
+      dropZone.classList.remove("dragover");
+      const file = e.dataTransfer.files[0];
+      processZipFile(file);
+    });
+
+    // Bei Klick auf die Drop-Zone den Datei-Dialog öffnen
+    dropZone.addEventListener("click", () => {
+      zipInput.click();
+    });
+
+    // Wenn im Datei-Input eine Datei ausgewählt wird
+    zipInput.addEventListener("change", async (e) => {
+      const file = e.target.files[0];
+      processZipFile(file);
+    });
+
+    async function processZipFile(file) {
       if (!file) return;
       const jszip = new JSZip();
       try {
@@ -72,15 +132,20 @@
         alert("Fehler beim Laden der ZIP-Datei: " + e.message);
         return;
       }
-      document.getElementById("zip-input").style.display = "none";
+      // Nach erfolgreichem Upload: Verstecke den Drop-Bereich und Header
+      dropZone.style.display = "none";
       document.getElementById("main-header").style.display = "none";
+      // Setze Version im Footer (als Platzhalter "ZIP")
       document.getElementById("folder-info").textContent = "Star-tools a @wolfikuproduction | version : ZIP";
+      // Liste alle HTML-Dateien aus der ZIP auf
       await listHTMLFilesFromZip();
-    });
+    }
 
+    // Funktion: Listet alle HTML-Dateien aus der ZIP, unabhängig von der Ordnerstruktur, auf
     async function listHTMLFilesFromZip() {
       const programListElem = document.getElementById("program-list");
       programListElem.innerHTML = "";
+      const sortingOption = localStorage.getItem("sortingOption") || "default";
       let files = [];
       for (const key in globalZip.files) {
         if (!globalZip.files[key].dir && key.toLowerCase().endsWith(".html")) {
@@ -88,23 +153,24 @@
           files.push({ title: filename, filePath: key });
         }
       }
-      files.sort((a, b) => a.title.localeCompare(b.title));
-
+      if (sortingOption === "alphabetical") {
+        files.sort((a, b) => a.title.localeCompare(b.title));
+      }
+      
       const favorites = await getAllFavorites();
       globalFavorites = {};
       favorites.forEach(fav => globalFavorites[fav.id] = fav);
-
+      
       if (favorites.length > 0) {
         const favHeader = document.createElement("li");
         favHeader.textContent = "Favoriten";
         favHeader.className = "favorites-header";
         programListElem.appendChild(favHeader);
-
         favorites.forEach(fav => {
           createProgramListItem(fav.title, fav.filePath, true);
         });
       }
-
+      
       files.forEach(file => {
         if (!globalFavorites["file_" + file.title]) {
           createProgramListItem(file.title, file.filePath, false);
@@ -118,11 +184,12 @@
       li.className = "normal-program";
       li.textContent = title;
       const favId = "file_" + title;
-      li.appendChild(createFavoriteIcon(favId, filePath, title));
+      li.appendChild(createFavoriteIcon(favId, wrapZipFile(globalZip.file(filePath)), "normal", title));
       li.onclick = async () => {
         try {
           const blob = await globalZip.file(filePath).async("blob");
-          const url = URL.createObjectURL(new Blob([blob], { type: "text/html" }));
+          const htmlBlob = new Blob([blob], { type: "text/html" });
+          const url = URL.createObjectURL(htmlBlob);
           await enterFullscreen(url);
         } catch (err) {
           alert("Das Spiel konnte nicht geladen werden.");
@@ -136,19 +203,29 @@
       const fsIframe = document.getElementById("fullscreen-iframe");
       fsIframe.src = url;
       fsContainer.style.display = "block";
-      if (fsContainer.requestFullscreen) await fsContainer.requestFullscreen();
+      if (fsContainer.requestFullscreen) {
+        await fsContainer.requestFullscreen();
+      } else if (fsContainer.webkitRequestFullscreen) {
+        await fsContainer.webkitRequestFullscreen();
+      } else if (fsContainer.msRequestFullscreen) {
+        await fsContainer.msRequestFullscreen();
+      }
     }
 
     document.getElementById("exit-fullscreen").addEventListener("click", async function() {
-      if (document.fullscreenElement) await document.exitFullscreen();
+      if (document.fullscreenElement) {
+        await document.exitFullscreen();
+      }
       document.getElementById("fullscreen-container").style.display = "none";
     });
 
+    // ================= IndexedDB für Favoriten =================
     function openFavoritesDB() {
       return new Promise((resolve, reject) => {
         const request = indexedDB.open("favoritesDB", 1);
         request.onupgradeneeded = () => {
-          request.result.createObjectStore("favorites", { keyPath: "id" });
+          const db = request.result;
+          db.createObjectStore("favorites", { keyPath: "id" });
         };
         request.onsuccess = () => resolve(request.result);
         request.onerror = () => reject(request.error);
@@ -160,7 +237,9 @@
       return new Promise((resolve, reject) => {
         const tx = db.transaction("favorites", "readwrite");
         const store = tx.objectStore("favorites");
-        store.put(fav).onsuccess = () => resolve();
+        const req = store.put(fav);
+        req.onsuccess = () => resolve();
+        req.onerror = () => reject(req.error);
       });
     }
 
@@ -169,7 +248,9 @@
       return new Promise((resolve, reject) => {
         const tx = db.transaction("favorites", "readwrite");
         const store = tx.objectStore("favorites");
-        store.delete(favId).onsuccess = () => resolve();
+        const req = store.delete(favId);
+        req.onsuccess = () => resolve();
+        req.onerror = () => reject(req.error);
       });
     }
 
@@ -178,28 +259,132 @@
       return new Promise((resolve, reject) => {
         const tx = db.transaction("favorites", "readonly");
         const store = tx.objectStore("favorites");
-        store.getAll().onsuccess = (event) => resolve(event.target.result);
+        const req = store.getAll();
+        req.onsuccess = (event) => resolve(event.target.result);
+        req.onerror = () => reject(req.error);
       });
     }
+    // ================= Ende Favoriten =================
 
-    function createFavoriteIcon(favId, filePath, title) {
+    function createFavoriteIcon(favId, fileHandle, type, title) {
       const span = document.createElement("span");
       span.className = "fav-icon";
-      span.textContent = globalFavorites[favId] ? "★" : "☆";
+      span.textContent = "☆";
+      getFavorite(favId).then(fav => {
+        if (fav) {
+          span.textContent = "★";
+        }
+      });
       span.addEventListener("click", async (e) => {
         e.stopPropagation();
-        if (globalFavorites[favId]) {
+        const fav = await getFavorite(favId);
+        if (fav) {
           await removeFavorite(favId);
           delete globalFavorites[favId];
           span.textContent = "☆";
         } else {
-          await addFavorite({ id: favId, title, filePath });
-          globalFavorites[favId] = { id: favId, title, filePath };
+          await addFavorite({ id: favId, title, filePath: fileHandle });
+          globalFavorites[favId] = { id: favId, title, filePath: fileHandle };
           span.textContent = "★";
         }
-        await listHTMLFilesFromZip();
+        await renderFavorites();
       });
       return span;
+    }
+
+    async function getFavorite(favId) {
+      const db = await openFavoritesDB();
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction("favorites", "readonly");
+        const store = tx.objectStore("favorites");
+        const req = store.get(favId);
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+      });
+    }
+
+    async function renderFavorites() {
+      const favListElem = document.getElementById('program-list');
+      const existingFavSection = document.getElementById("favorites-section");
+      if (existingFavSection) {
+        existingFavSection.remove();
+      }
+      const favorites = await getAllFavorites();
+      globalFavorites = {};
+      favorites.forEach(f => globalFavorites[f.id] = f);
+      if (favorites.length > 0) {
+        const favSection = document.createElement("div");
+        favSection.id = "favorites-section";
+        const header = document.createElement("div");
+        header.className = "favorites-header";
+        header.textContent = "Favoriten";
+        favSection.appendChild(header);
+        favorites.forEach(fav => {
+          const li = document.createElement("li");
+          li.className = "normal-program";
+          li.textContent = fav.title;
+          li.appendChild(createFavoriteIcon(fav.id, fav.filePath, "normal", fav.title));
+          li.onclick = async () => {
+            try {
+              const blob = await globalZip.file(fav.filePath).async("blob");
+              const htmlBlob = new Blob([blob], { type: "text/html" });
+              const url = URL.createObjectURL(htmlBlob);
+              await enterFullscreen(url);
+            } catch (err) {
+              alert("Das Spiel konnte nicht geladen werden.");
+              await removeFavorite(fav.id);
+              renderFavorites();
+            }
+          };
+          favSection.appendChild(li);
+        });
+        const programList = document.getElementById("program-list");
+        programList.prepend(favSection);
+      }
+    }
+
+    // Einstellungen-Modal
+    const settingsButton = document.getElementById("settings-button");
+    const settingsModal = document.getElementById("settings-modal");
+    const closeModal = document.querySelector(".close-modal");
+
+    settingsButton.addEventListener("click", () => {
+      settingsModal.style.display = "block";
+    });
+    if (closeModal) {
+      closeModal.addEventListener("click", () => {
+        settingsModal.style.display = "none";
+        const sortingOption = document.getElementById("sorting-option").value;
+        localStorage.setItem("sortingOption", sortingOption);
+        const volume = document.getElementById("music-volume").value;
+        document.getElementById("audio-player").volume = volume;
+      });
+    }
+    window.addEventListener("click", (e) => {
+      if (e.target === settingsModal) {
+        settingsModal.style.display = "none";
+        const sortingOption = document.getElementById("sorting-option").value;
+        localStorage.setItem("sortingOption", sortingOption);
+        const volume = document.getElementById("music-volume").value;
+        document.getElementById("audio-player").volume = volume;
+      }
+    });
+
+    document.getElementById("delete-all-data").addEventListener("click", async () => {
+      if (confirm("Alle lokalen Daten (Favoriten, Einstellungen) wirklich löschen?")) {
+        localStorage.removeItem("sortingOption");
+        await clearAllFavorites();
+        alert("Alle Daten wurden gelöscht.");
+        renderFavorites();
+      }
+    });
+  </script>
+  
+  <script>
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("service-worker.js")
+          .then(() => console.log("Service Worker registriert"))
+          .catch((err) => console.log("Service Worker Fehler:", err));
     }
   </script>
 </body>
