@@ -8,37 +8,44 @@
   <meta name="apple-mobile-web-app-title" content="Star-Hub">
   <link rel="apple-touch-icon" href="icons/icon-192.png">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Spielesucher mit Einstellungen, Favoriten, Musik & Fullscreen</title>
+  <title>Star-Hub – ZIP-Version</title>
   <!-- Externe CSS-Datei -->
   <link rel="stylesheet" href="styles.css">
-  <!-- JSZip (zum Verarbeiten von ZIP-Dateien) -->
+  <!-- JSZip zum Verarbeiten der ZIP-Datei -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.0/jszip.min.js"></script>
 </head>
 <body>
-  <!-- Header "Star-hub" – wird nach dem Upload ausgeblendet -->
+  <!-- Header "Star-hub" – wird nach Upload ausgeblendet -->
   <div id="main-header">Star-hub</div>
   <div class="container">
     <div class="content" id="main-content">
-      <!-- Statt eines Ordner-Auswahl-Buttons: ZIP-Datei hochladen -->
-      <input type="file" id="zip-input" accept=".zip">
+      <!-- Upload-Bereich mit Drag & Drop -->
+      <div id="upload-container">
+        <h2>Willkommen bei Star-hub</h2>
+        <p>Bitte wähle ein Gameplack (ZIP-Format) aus</p>
+        <div id="drop-zone">Ziehe deine ZIP-Datei hierher oder tippe hier, um eine Datei auszuwählen</div>
+      </div>
+      <!-- Unsichtbarer Datei-Input -->
+      <input type="file" id="zip-input" accept=".zip" style="display:none;">
       <!-- Einstellungen-Button -->
       <button id="settings-button">Einstellungen</button>
-      <!-- Hier werden die Spiele (Favoriten, Superprogramme, normale Spiele, 3rd Party Games) aufgelistet -->
+      <!-- Hier werden die HTML-Dateien (und Favoriten) aufgelistet -->
       <ul id="program-list"></ul>
-      <!-- Audio-Player (wird unsichtbar verwendet) -->
-      <audio id="audio-player"></audio>
+      <!-- Neuer Upload-Button (für erneuten Upload), zunächst versteckt -->
+      <button id="reupload-button" style="display:none;">ZIP neu hochladen</button>
+      <!-- (Audio-Player bleibt erhalten, wird aber nicht sichtbar angezeigt) -->
+      <audio id="audio-player" style="display:none;"></audio>
     </div>
-    <!-- Footer (Status-Bar) – zeigt z. B. "Star-tools a @wolfikuproduction | version : [Name]" -->
     <footer id="folder-info"></footer>
   </div>
   
-  <!-- Fullscreen-Container für die Spielanzeige -->
+  <!-- Fullscreen-Container für die Anzeige -->
   <div id="fullscreen-container">
     <iframe id="fullscreen-iframe"></iframe>
     <button id="exit-fullscreen">Stop</button>
   </div>
   
-  <!-- Modal für Einstellungen -->
+  <!-- Modal für Einstellungen (Musiklautstärke entfernt) -->
   <div id="settings-modal">
     <div class="modal-content">
       <span class="close-modal">&times;</span>
@@ -51,10 +58,6 @@
         </select>
       </div>
       <div class="settings-group">
-        <label for="music-volume">Musiklautstärke:</label>
-        <input type="range" id="music-volume" min="0" max="1" step="0.01" value="0.5">
-      </div>
-      <div class="settings-group">
         <button id="delete-all-data">Alle Daten löschen</button>
       </div>
     </div>
@@ -63,35 +66,67 @@
   <!-- Service Worker Registrierung -->
   <script>
     if ("serviceWorker" in navigator) {
-        navigator.serviceWorker.register("service-worker.js")
-            .then(() => console.log("Service Worker registriert"))
-            .catch((err) => console.log("Service Worker Fehler:", err));
+      navigator.serviceWorker.register("service-worker.js")
+          .then(() => console.log("Service Worker registriert"))
+          .catch((err) => console.log("Service Worker Fehler:", err));
     }
   </script>
   
   <!-- Haupt-Script -->
   <script>
-    /* 
-      Dieser Code übernimmt alle Funktionen des vorherigen Skripts (Favoriten, Einstellungen,
-      Vollbildmodus, Musik, etc.) – nur dass nun anstatt eines Ordner-Auswahl-Dialogs
-      eine ZIP-Datei hochgeladen wird. Die ZIP-Datei muss die gesamte Ordnerstruktur enthalten,
-      z. B.:
-      
-      - sh-data/
-         - 1/
-           - sshtml_xyz/ (enthält game-data/ und media-data/)
-           - weitere HTML-Dateien
-         - 2/ usw.
-      - sh-3party-games/
-         - Dateien (HTML)
+    /*
+      Diese Version verwendet ein Drag & Drop-System für den ZIP-Upload.
+      Der Benutzer lädt eine ZIP-Datei hoch, die alle HTML-Dateien enthält.
+      Doppelte Dateinamen werden dedupliziert, und Favoriten, Einstellungen
+      sowie der Fullscreen-Modus bleiben erhalten.
+      Außerdem erscheint ein "ZIP neu hochladen"-Button, um den Upload zurückzusetzen.
+      Musikfunktionen (und der Lautstärkeregler) wurden entfernt.
     */
     
-    // Globaler JSZip-Container
     let globalZip = null;
+    let globalFavorites = {};
 
-    // ZIP-Upload: Sobald eine ZIP-Datei hochgeladen wird, wird sie verarbeitet.
-    document.getElementById("zip-input").addEventListener("change", async (event) => {
-      const file = event.target.files[0];
+    function wrapZipFile(zipFile) {
+      return {
+        getFile: async function() {
+          return await zipFile.async("blob");
+        }
+      };
+    }
+
+    // Elemente abrufen
+    const dropZone = document.getElementById("drop-zone");
+    const zipInput = document.getElementById("zip-input");
+    const reuploadButton = document.getElementById("reupload-button");
+
+    // Drag & Drop Ereignisse
+    dropZone.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      dropZone.classList.add("dragover");
+    });
+
+    dropZone.addEventListener("dragleave", (e) => {
+      e.preventDefault();
+      dropZone.classList.remove("dragover");
+    });
+
+    dropZone.addEventListener("drop", async (e) => {
+      e.preventDefault();
+      dropZone.classList.remove("dragover");
+      const file = e.dataTransfer.files[0];
+      processZipFile(file);
+    });
+
+    dropZone.addEventListener("click", () => {
+      zipInput.click();
+    });
+
+    zipInput.addEventListener("change", async (e) => {
+      const file = e.target.files[0];
+      processZipFile(file);
+    });
+
+    async function processZipFile(file) {
       if (!file) return;
       const jszip = new JSZip();
       try {
@@ -100,147 +135,91 @@
         alert("Fehler beim Laden der ZIP-Datei: " + e.message);
         return;
       }
-      // Nach erfolgreichem Upload:
-      document.getElementById("zip-input").style.display = "none";
+      // Nach erfolgreichem Upload: Upload-Bereich und Header ausblenden, Reupload-Button einblenden
+      document.getElementById("upload-container").style.display = "none";
       document.getElementById("main-header").style.display = "none";
-      
-      // Ermittele den neuesten Unterordner in "sh-data/"
-      const newest = getNewestSubfolderFromZip(globalZip);
-      if (!newest) {
-        alert("Kein passender Unterordner in 'sh-data' gefunden.");
-        return;
-      }
-      // Setze die Version im Footer: "Star-tools a @wolfikuproduction | version : [Neuster Ordner]"
-      document.getElementById("folder-info").textContent = "Star-tools a @wolfikuproduction | version : " + newest;
-      // Liste die Programme und 3rd Party Games aus dem ZIP auf
-      await listProgramsFromZip(newest);
-      await listThirdPartyGamesFromZip();
+      reuploadButton.style.display = "block";
+      document.getElementById("folder-info").textContent = "Star-tools a @wolfikuproduction | version : 2";
+      await listHTMLFilesFromZip();
+    }
+
+    // Reupload-Button: Setzt das Interface zurück
+    reuploadButton.addEventListener("click", () => {
+      globalZip = null;
+      document.getElementById("upload-container").style.display = "block";
+      document.getElementById("main-header").style.display = "block";
+      reuploadButton.style.display = "none";
+      document.getElementById("program-list").innerHTML = "";
+      document.getElementById("folder-info").textContent = "";
+      zipInput.value = "";
     });
 
-    // Funktion: Ermittelt den höchsten (neuesten) Ordner in "sh-data/"
-    function getNewestSubfolderFromZip(zip) {
-      let max = -1;
-      let chosen = null;
-      for (const key in zip.files) {
-        if (key.startsWith("sh-data/")) {
-          const parts = key.split("/");
-          if (parts.length >= 2) {
-            const num = parseInt(parts[1]);
-            if (!isNaN(num) && num > max) {
-              max = num;
-              chosen = parts[1];
-            }
-          }
-        }
-      }
-      return chosen;
-    }
-
-    // Funktion: Liste der Programme (Superprogramme und normale Spiele) aus dem neuesten Ordner
-    async function listProgramsFromZip(folder) {
+    // Listet alle HTML-Dateien aus der ZIP, dedupliziert doppelte Dateinamen
+    async function listHTMLFilesFromZip() {
       const programListElem = document.getElementById("program-list");
-      const prefix = "sh-data/" + folder + "/";
-      const superPrograms = [];
-      const normalFiles = [];
-      
+      programListElem.innerHTML = "";
+      const sortingOption = localStorage.getItem("sortingOption") || "default";
+      let files = [];
       for (const key in globalZip.files) {
-        if (key.startsWith(prefix)) {
-          const relative = key.substring(prefix.length);
-          // Überspringe Verzeichnisse
-          if (globalZip.files[key].dir) continue;
-          // Superprogramme: Erkennung, wenn der Pfad mit "sshtml_" beginnt
-          if (relative.startsWith("sshtml_")) {
-            // Beispielpfad: "sshtml_xyz/game-data/game.html"
-            const parts = relative.split("/");
-            if (parts.length >= 2) {
-              const title = parts[0].replace("sshtml_", "");
-              superPrograms.push({ title: title, filePath: key });
-            }
-          } else if (relative.endsWith(".html")) {
-            normalFiles.push({ title: relative.replace(/\.html$/i, ""), filePath: key });
-          }
+        if (!globalZip.files[key].dir && key.toLowerCase().endsWith(".html")) {
+          const filename = key.split("/").pop().replace(/\.html$/i, "");
+          files.push({ title: filename, filePath: key });
         }
       }
+      // Dedupliziere Dateien basierend auf dem Titel
+      let uniqueFiles = {};
+      files.forEach(file => {
+        if (!uniqueFiles[file.title]) {
+          uniqueFiles[file.title] = file;
+        }
+      });
+      files = Object.values(uniqueFiles);
       
-      // Zeige Superprogramme an
-      for (const sp of superPrograms) {
-        const li = document.createElement("li");
-        li.className = "super-program";
-        li.textContent = sp.title;
-        li.onclick = async () => {
-          try {
-            const blob = await globalZip.file(sp.filePath).async("blob");
-            const url = URL.createObjectURL(blob);
-            await enterFullscreen(url);
-            // Hier könntest du auch Musik aus dem entsprechenden media-data-Ordner starten
-          } catch (err) {
-            alert("Das Spiel konnte nicht geladen werden.");
-          }
-        };
-        programListElem.appendChild(li);
+      if (sortingOption === "alphabetical") {
+        files.sort((a, b) => a.title.localeCompare(b.title));
       }
       
-      if (superPrograms.length > 0 && normalFiles.length > 0) {
-        const separator = document.createElement("li");
-        separator.textContent = "----- Normale Spiele -----";
-        separator.style.textAlign = "center";
-        separator.style.fontStyle = "italic";
-        programListElem.appendChild(separator);
+      const favorites = await getAllFavorites();
+      globalFavorites = {};
+      favorites.forEach(fav => globalFavorites[fav.id] = fav);
+      
+      if (favorites.length > 0) {
+        const favHeader = document.createElement("li");
+        favHeader.textContent = "Favoriten";
+        favHeader.className = "favorites-header";
+        programListElem.appendChild(favHeader);
+        favorites.forEach(fav => {
+          createProgramListItem(fav.title, fav.filePath, true);
+        });
       }
       
-      // Zeige normale HTML-Dateien an
-      for (const nf of normalFiles) {
-        const li = document.createElement("li");
-        li.className = "normal-program";
-        li.textContent = nf.title;
-        li.onclick = async () => {
-          try {
-            const blob = await globalZip.file(nf.filePath).async("blob");
-            const url = URL.createObjectURL(blob);
-            await enterFullscreen(url);
-          } catch (err) {
-            alert("Das Spiel konnte nicht geladen werden.");
-          }
-        };
-        programListElem.appendChild(li);
-      }
+      files.forEach(file => {
+        if (!globalFavorites["file_" + file.title]) {
+          createProgramListItem(file.title, file.filePath, false);
+        }
+      });
     }
 
-    // Funktion: Liste 3rd Party Games aus "sh-3party-games/"
-    async function listThirdPartyGamesFromZip() {
-      const prefix = "sh-3party-games/";
-      const entries = [];
-      for (const key in globalZip.files) {
-        if (key.startsWith(prefix) && !globalZip.files[key].dir && key.endsWith(".html")) {
-          entries.push({ title: key.substring(prefix.length).replace(/\.html$/i, ""), filePath: key });
+    function createProgramListItem(title, filePath, isFavorite) {
+      const programListElem = document.getElementById("program-list");
+      const li = document.createElement("li");
+      li.className = "normal-program";
+      li.textContent = title;
+      const favId = "file_" + title;
+      li.appendChild(createFavoriteIcon(favId, wrapZipFile(globalZip.file(filePath)), "normal", title));
+      li.onclick = async () => {
+        try {
+          const blob = await globalZip.file(filePath).async("blob");
+          const htmlBlob = new Blob([blob], { type: "text/html" });
+          const url = URL.createObjectURL(htmlBlob);
+          await enterFullscreen(url);
+        } catch (err) {
+          alert("Das Spiel konnte nicht geladen werden.");
         }
-      }
-      if (entries.length > 0) {
-        const programListElem = document.getElementById("program-list");
-        const separator = document.createElement("li");
-        separator.textContent = "----- 3rd Party Games -----";
-        separator.style.textAlign = "center";
-        separator.style.fontStyle = "italic";
-        programListElem.appendChild(separator);
-        for (const entry of entries) {
-          const li = document.createElement("li");
-          li.className = "third-party-program";
-          li.textContent = entry.title;
-          li.onclick = async () => {
-            try {
-              const blob = await globalZip.file(entry.filePath).async("blob");
-              const url = URL.createObjectURL(blob);
-              await enterFullscreen(url);
-            } catch (err) {
-              alert("Das Spiel konnte nicht geladen werden.");
-            }
-          };
-          programListElem.appendChild(li);
-        }
-      }
+      };
+      programListElem.appendChild(li);
     }
 
-    // Vollbild-Funktion: Öffnet die URL im Iframe im Vollbildmodus
     async function enterFullscreen(url) {
       const fsContainer = document.getElementById("fullscreen-container");
       const fsIframe = document.getElementById("fullscreen-iframe");
@@ -262,7 +241,72 @@
       document.getElementById("fullscreen-container").style.display = "none";
     });
 
-    // Einstellungen-Modal
+    function openFavoritesDB() {
+      return new Promise((resolve, reject) => {
+        const request = indexedDB.open("favoritesDB", 1);
+        request.onupgradeneeded = () => {
+          const db = request.result;
+          db.createObjectStore("favorites", { keyPath: "id" });
+        };
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+      });
+    }
+
+    async function addFavorite(fav) {
+      const db = await openFavoritesDB();
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction("favorites", "readwrite");
+        const store = tx.objectStore("favorites");
+        const req = store.put(fav);
+        req.onsuccess = () => resolve();
+        req.onerror = () => reject(req.error);
+      });
+    }
+
+    async function removeFavorite(favId) {
+      const db = await openFavoritesDB();
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction("favorites", "readwrite");
+        const store = tx.objectStore("favorites");
+        const req = store.delete(favId);
+        req.onsuccess = () => resolve();
+        req.onerror = () => reject(req.error);
+      });
+    }
+
+    async function getAllFavorites() {
+      const db = await openFavoritesDB();
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction("favorites", "readonly");
+        const store = tx.objectStore("favorites");
+        const req = store.getAll();
+        req.onsuccess = (event) => resolve(event.target.result);
+        req.onerror = () => reject(req.error);
+      });
+    }
+
+    function createFavoriteIcon(favId, filePath, type, title) {
+      const span = document.createElement("span");
+      span.className = "fav-icon";
+      span.textContent = globalFavorites[favId] ? "★" : "☆";
+      span.addEventListener("click", async (e) => {
+        e.stopPropagation();
+        const fav = await getFavorite(favId);
+        if (fav) {
+          await removeFavorite(favId);
+          delete globalFavorites[favId];
+          span.textContent = "☆";
+        } else {
+          await addFavorite({ id: favId, title, filePath });
+          globalFavorites[favId] = { id: favId, title, filePath };
+          span.textContent = "★";
+        }
+        await renderFavorites();
+      });
+      return span;
+    }
+
     const settingsButton = document.getElementById("settings-button");
     const settingsModal = document.getElementById("settings-modal");
     const closeModal = document.querySelector(".close-modal");
@@ -275,8 +319,6 @@
         settingsModal.style.display = "none";
         const sortingOption = document.getElementById("sorting-option").value;
         localStorage.setItem("sortingOption", sortingOption);
-        const volume = document.getElementById("music-volume").value;
-        document.getElementById("audio-player").volume = volume;
       });
     }
     window.addEventListener("click", (e) => {
@@ -284,8 +326,6 @@
         settingsModal.style.display = "none";
         const sortingOption = document.getElementById("sorting-option").value;
         localStorage.setItem("sortingOption", sortingOption);
-        const volume = document.getElementById("music-volume").value;
-        document.getElementById("audio-player").volume = volume;
       }
     });
 
@@ -294,8 +334,17 @@
         localStorage.removeItem("sortingOption");
         await clearAllFavorites();
         alert("Alle Daten wurden gelöscht.");
+        renderFavorites();
       }
     });
+  </script>
+  
+  <script>
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("service-worker.js")
+          .then(() => console.log("Service Worker registriert"))
+          .catch((err) => console.log("Service Worker Fehler:", err));
+    }
   </script>
 </body>
 </html>
