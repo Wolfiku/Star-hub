@@ -2,198 +2,19 @@
 <html lang="de">
 <head>
   <meta charset="UTF-8">
-<link rel="manifest" href="manifest.json">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Star-Hub">
-<link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="manifest" href="manifest.json">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Star-Hub">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Spielesucher mit Einstellungen, Favoriten, Musik & Fullscreen</title>
-  <style>
-    html, body {
-      height: 100%;
-      margin: 0;
-      font-family: sans-serif;
-      background-color: #fafafa;
-    }
-    .container {
-      display: flex;
-      flex-direction: column;
-      height: 100%;
-    }
-    /* Hauptbereich erhält einen weißen Hintergrund */
-    .content {
-      flex: 1;
-      background-color: #fff;
-      position: relative;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      padding: 20px;
-    }
-    button {
-      padding: 12px 24px;
-      font-size: 1.2em;
-      margin: 10px;
-      cursor: pointer;
-    }
-    #program-list {
-      list-style: none;
-      padding: 0;
-      margin: 20px 0;
-      width: 80%;
-      max-width: 600px;
-    }
-    /* Runder Kasten für Superprogramme (rot) */
-    .super-program {
-      background-color: #ff4d4d;
-      color: white;
-      border: 1px solid #cc0000;
-      border-radius: 15px;
-      padding: 10px;
-      margin-bottom: 10px;
-      text-align: center;
-      cursor: pointer;
-      transition: background-color 0.3s;
-      position: relative;
-    }
-    .super-program:hover {
-      background-color: #e60000;
-    }
-    /* Runder Kasten für normale Spiele (weiß mit schwarzer Schrift) */
-    .normal-program {
-      background-color: white;
-      color: black;
-      border: 1px solid #ccc;
-      border-radius: 15px;
-      padding: 10px;
-      margin-bottom: 10px;
-      text-align: center;
-      cursor: pointer;
-      transition: background-color 0.3s;
-      position: relative;
-    }
-    .normal-program:hover {
-      background-color: #f0f0f0;
-    }
-    /* Runder Kasten für 3rd Party Games (orange) */
-    .third-party-program {
-      background-color: #ffa500;
-      color: white;
-      border: 1px solid #cc7a00;
-      border-radius: 15px;
-      padding: 10px;
-      margin-bottom: 10px;
-      text-align: center;
-      cursor: pointer;
-      transition: background-color 0.3s;
-      position: relative;
-    }
-    .third-party-program:hover {
-      background-color: #e59400;
-    }
-    /* Favoriten-Stern – Position im runden Kasten */
-    .fav-icon {
-      position: absolute;
-      top: 5px;
-      right: 10px;
-      font-size: 1.2em;
-      cursor: pointer;
-      user-select: none;
-    }
-    /* Footer (Status-Bar): Zeige "@wolfiku v.[Name]" */
-    footer {
-      background-color: #f5f5f5;
-      text-align: center;
-      padding: 10px;
-      font-size: 0.9em;
-      display: block;
-    }
-    /* Das Audio-Element wird nicht sichtbar angezeigt */
-    #audio-player {
-      display: none;
-    }
-    /* Fullscreen-Container: Hintergrund weiß */
-    #fullscreen-container {
-      display: none;
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: white;
-      z-index: 9999;
-    }
-    #fullscreen-iframe {
-      width: 100%;
-      height: 100%;
-      border: none;
-      background: white;
-    }
-    #exit-fullscreen {
-      position: absolute;
-      bottom: 20px;
-      right: 20px;
-      padding: 10px 20px;
-      font-size: 1.2em;
-      cursor: pointer;
-    }
-    /* Einstellungen-Button im Hauptbereich (oben rechts) */
-    #settings-button {
-      position: absolute;
-      top: 10px;
-      right: 10px;
-      padding: 8px 16px;
-      font-size: 1em;
-      cursor: pointer;
-    }
-    /* Modal für Einstellungen */
-    #settings-modal {
-      display: none;
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0,0,0,0.5);
-      z-index: 10000;
-    }
-    #settings-modal .modal-content {
-      background: white;
-      margin: 15% auto;
-      padding: 20px;
-      width: 80%;
-      max-width: 400px;
-      border-radius: 10px;
-      text-align: center;
-      position: relative;
-    }
-    #settings-modal .close-modal {
-      position: absolute;
-      top: 10px;
-      right: 10px;
-      font-size: 1.2em;
-      cursor: pointer;
-    }
-    .settings-group {
-      margin: 15px 0;
-    }
-    label {
-      display: block;
-      margin-bottom: 5px;
-    }
-    input[type="range"] {
-      width: 100%;
-    }
-    /* Header für Favoriten */
-    .favorites-header {
-      text-align: center;
-      font-style: italic;
-      margin-bottom: 10px;
-    }
-  </style>
+  <!-- Externe CSS-Datei einbinden -->
+  <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+  <!-- Header "Star-hub" (wird nach Ordnerauswahl ausgeblendet) -->
+  <div id="main-header">Star-hub</div>
   <div class="container">
     <div class="content" id="main-content">
       <button id="select-folder">Ordner auswählen</button>
@@ -232,7 +53,17 @@
       </div>
     </div>
   </div>
-
+  
+  <!-- Service Worker Registrierung -->
+  <script>
+    if ("serviceWorker" in navigator) {
+        navigator.serviceWorker.register("service-worker.js")
+            .then(() => console.log("Service Worker registriert"))
+            .catch((err) => console.log("Service Worker Fehler:", err));
+    }
+  </script>
+  
+  <!-- Haupt-Script -->
   <script>
     // ================= IndexedDB für Favoriten =================
     function openFavoritesDB() {
@@ -303,14 +134,14 @@
     }
     // ================= Ende Favoriten =================
 
-    // Hier wird createFavoriteIcon definiert – damit ist es in allen Funktionen verfügbar.
+    // Hier wird createFavoriteIcon definiert – verfügbar in allen Funktionen.
     function createFavoriteIcon(favId, fileHandle, type, title) {
       const span = document.createElement("span");
       span.className = "fav-icon";
-      span.textContent = "☆"; // leerer Stern
+      span.textContent = "☆";
       getFavorite(favId).then(fav => {
         if (fav) {
-          span.textContent = "★"; // gefüllt
+          span.textContent = "★";
         }
       });
       span.addEventListener("click", async (e) => {
@@ -329,7 +160,6 @@
       return span;
     }
 
-    // Globales Objekt für aktuell geladene Favoriten (Mapping favId => Favorit)
     let globalFavorites = {};
 
     async function renderFavorites() {
@@ -578,8 +408,8 @@
         programListElem.appendChild(li);
       }
     }
-
-async function listThirdPartyGames(mainFolderHandle) {
+    
+    async function listThirdPartyGames(mainFolderHandle) {
       try {
         const thirdPartyHandle = await mainFolderHandle.getDirectoryHandle('sh-3party-games', { create: false });
         const entries = [];
@@ -626,23 +456,20 @@ async function listThirdPartyGames(mainFolderHandle) {
       }
     }
 
-    // Einstellungen-Modal öffnen/schließen
-const settingsButton = document.getElementById("settings-button");
+    const settingsButton = document.getElementById("settings-button");
     const settingsModal = document.getElementById("settings-modal");
     const closeModal = document.querySelector(".close-modal");
 
     settingsButton.addEventListener("click", () => {
       settingsModal.style.display = "block";
     });
-    if(closeModal){
-      closeModal.addEventListener("click", () => {
-        settingsModal.style.display = "none";
-        const sortingOption = document.getElementById("sorting-option").value;
-        localStorage.setItem("sortingOption", sortingOption);
-        const volume = document.getElementById("music-volume").value;
-        document.getElementById("audio-player").volume = volume;
-      });
-    }
+    closeModal && closeModal.addEventListener("click", () => {
+      settingsModal.style.display = "none";
+      const sortingOption = document.getElementById("sorting-option").value;
+      localStorage.setItem("sortingOption", sortingOption);
+      const volume = document.getElementById("music-volume").value;
+      document.getElementById("audio-player").volume = volume;
+    });
     window.addEventListener("click", (e) => {
       if (e.target === settingsModal) {
         settingsModal.style.display = "none";
@@ -662,16 +489,15 @@ const settingsButton = document.getElementById("settings-button");
       }
     });
 
-    // Klick-Event: Hauptordner auswählen, Favoriten rendern, neusten Version-Ordner aus 'sh-data' ermitteln, Status-Bar anpassen und alle Einträge in der richtigen Reihenfolge auflisten.
     document.getElementById('select-folder').addEventListener('click', async () => {
       const mainFolderHandle = await selectFolder();
       if (!mainFolderHandle) return;
-      // Blende den Ordner-Auswahl-Button aus.
       document.getElementById('select-folder').style.display = "none";
+      document.getElementById('main-header').style.display = "none";
       await renderFavorites();
       try {
         const newestSubfolder = await getNewestSubfolder(mainFolderHandle);
-        document.getElementById('folder-info').textContent = "@wolfiku v." + newestSubfolder.name;
+        document.getElementById('folder-info').textContent = "Star-tools a @wolfikuproduction | version : " + newestSubfolder.name;
         await listPrograms(newestSubfolder);
         await listThirdPartyGames(mainFolderHandle);
       } catch (e) {
@@ -680,13 +506,5 @@ const settingsButton = document.getElementById("settings-button");
       }
     });
   </script>
-<script>
-    if ("serviceWorker" in navigator) {
-        navigator.serviceWorker.register("service-worker.js")
-            .then(() => console.log("Service Worker registriert"))
-            .catch((err) => console.log("Service Worker Fehler:", err));
-    }
-</script>
-
 </body>
 </html>
