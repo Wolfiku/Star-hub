@@ -15,13 +15,16 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.0/jszip.min.js"></script>
 </head>
 <body>
-  <!-- Header "Star-hub" – wird nach dem Upload ausgeblendet -->
   <div id="main-header">Star-hub</div>
   <div class="container">
     <div class="content" id="main-content">
-      <!-- Drag & Drop Bereich -->
-      <div id="drop-zone">Ziehe deine ZIP-Datei hierher oder tippe hier, um eine Datei auszuwählen</div>
-      <!-- Unsichtbares Datei-Input (wird vom Drop-Bereich ausgelöst) -->
+      <!-- Upload-Bereich mit Drag & Drop -->
+      <div id="upload-container">
+        <h2>Willkommen bei Star-hub</h2>
+        <p>Bitte wähle ein Gameplack (ZIP-Format) aus</p>
+        <div id="drop-zone">Ziehe deine ZIP-Datei hierher oder tippe hier, um eine Datei auszuwählen</div>
+      </div>
+      <!-- Unsichtbarer Datei-Input -->
       <input type="file" id="zip-input" accept=".zip" style="display:none;">
       <!-- Einstellungen-Button -->
       <button id="settings-button">Einstellungen</button>
@@ -32,13 +35,11 @@
     <footer id="folder-info"></footer>
   </div>
   
-  <!-- Fullscreen-Container für die Anzeige -->
   <div id="fullscreen-container">
     <iframe id="fullscreen-iframe"></iframe>
     <button id="exit-fullscreen">Stop</button>
   </div>
   
-  <!-- Modal für Einstellungen -->
   <div id="settings-modal">
     <div class="modal-content">
       <span class="close-modal">&times;</span>
@@ -60,8 +61,8 @@
     </div>
   </div>
   
-  <!-- Service Worker Registrierung -->
   <script>
+    // Service Worker Registrierung
     if ("serviceWorker" in navigator) {
       navigator.serviceWorker.register("service-worker.js")
           .then(() => console.log("Service Worker registriert"))
@@ -71,16 +72,16 @@
   
   <!-- Haupt-Script -->
   <script>
-    /* 
+    /*
       Diese Version verwendet ein Drag & Drop-System für den ZIP-Upload.
-      Der Benutzer kann die ZIP-Datei in den Drop-Bereich ziehen oder darauf tippen, um eine Datei auszuwählen.
-      Alle HTML-Dateien in der ZIP werden dann aufgelistet, Favoriten, Einstellungen und Fullscreen bleiben erhalten.
+      Der Benutzer lädt eine ZIP-Datei hoch, die alle HTML-Dateien enthält.
+      Doppelte Dateinamen werden in listHTMLFilesFromZip dedupliziert.
+      Favoriten, Einstellungen und Fullscreen-Funktionalität bleiben erhalten.
     */
-
+    
     let globalZip = null;
     let globalFavorites = {};
 
-    // Wrapper-Funktion, um ein ZIP-Dateiobjekt in ein fileHandle-ähnliches Objekt zu verpacken.
     function wrapZipFile(zipFile) {
       return {
         getFile: async function() {
@@ -89,11 +90,10 @@
       };
     }
 
-    // Drop-Zone und Datei-Input einrichten
+    // Drop-Zone einrichten
     const dropZone = document.getElementById("drop-zone");
     const zipInput = document.getElementById("zip-input");
 
-    // Drag-Over event verhindern, damit der Browser die Datei nicht öffnet
     dropZone.addEventListener("dragover", (e) => {
       e.preventDefault();
       dropZone.classList.add("dragover");
@@ -104,7 +104,6 @@
       dropZone.classList.remove("dragover");
     });
 
-    // Beim Drop die Datei verarbeiten
     dropZone.addEventListener("drop", async (e) => {
       e.preventDefault();
       dropZone.classList.remove("dragover");
@@ -112,12 +111,10 @@
       processZipFile(file);
     });
 
-    // Bei Klick auf die Drop-Zone den Datei-Dialog öffnen
     dropZone.addEventListener("click", () => {
       zipInput.click();
     });
 
-    // Wenn im Datei-Input eine Datei ausgewählt wird
     zipInput.addEventListener("change", async (e) => {
       const file = e.target.files[0];
       processZipFile(file);
@@ -132,16 +129,14 @@
         alert("Fehler beim Laden der ZIP-Datei: " + e.message);
         return;
       }
-      // Nach erfolgreichem Upload: Verstecke den Drop-Bereich und Header
-      dropZone.style.display = "none";
+      // Nach Upload: Drop-Bereich und Header ausblenden
+      document.getElementById("upload-container").style.display = "none";
       document.getElementById("main-header").style.display = "none";
-      // Setze Version im Footer (als Platzhalter "ZIP")
       document.getElementById("folder-info").textContent = "Star-tools a @wolfikuproduction | version : ZIP";
-      // Liste alle HTML-Dateien aus der ZIP auf
       await listHTMLFilesFromZip();
     }
 
-    // Funktion: Listet alle HTML-Dateien aus der ZIP, unabhängig von der Ordnerstruktur, auf
+    // Liste alle HTML-Dateien aus der ZIP auf, dedupliziere gleiche Dateinamen
     async function listHTMLFilesFromZip() {
       const programListElem = document.getElementById("program-list");
       programListElem.innerHTML = "";
@@ -153,6 +148,15 @@
           files.push({ title: filename, filePath: key });
         }
       }
+      // Dedupliziere Dateien basierend auf dem Titel
+      let uniqueFiles = {};
+      files.forEach(file => {
+        if (!uniqueFiles[file.title]) {
+          uniqueFiles[file.title] = file;
+        }
+      });
+      files = Object.values(uniqueFiles);
+      
       if (sortingOption === "alphabetical") {
         files.sort((a, b) => a.title.localeCompare(b.title));
       }
@@ -219,7 +223,6 @@
       document.getElementById("fullscreen-container").style.display = "none";
     });
 
-    // ================= IndexedDB für Favoriten =================
     function openFavoritesDB() {
       return new Promise((resolve, reject) => {
         const request = indexedDB.open("favoritesDB", 1);
@@ -264,17 +267,11 @@
         req.onerror = () => reject(req.error);
       });
     }
-    // ================= Ende Favoriten =================
 
-    function createFavoriteIcon(favId, fileHandle, type, title) {
+    function createFavoriteIcon(favId, filePath, type, title) {
       const span = document.createElement("span");
       span.className = "fav-icon";
-      span.textContent = "☆";
-      getFavorite(favId).then(fav => {
-        if (fav) {
-          span.textContent = "★";
-        }
-      });
+      span.textContent = globalFavorites[favId] ? "★" : "☆";
       span.addEventListener("click", async (e) => {
         e.stopPropagation();
         const fav = await getFavorite(favId);
@@ -283,8 +280,8 @@
           delete globalFavorites[favId];
           span.textContent = "☆";
         } else {
-          await addFavorite({ id: favId, title, filePath: fileHandle });
-          globalFavorites[favId] = { id: favId, title, filePath: fileHandle };
+          await addFavorite({ id: favId, title, filePath });
+          globalFavorites[favId] = { id: favId, title, filePath };
           span.textContent = "★";
         }
         await renderFavorites();
@@ -292,19 +289,8 @@
       return span;
     }
 
-    async function getFavorite(favId) {
-      const db = await openFavoritesDB();
-      return new Promise((resolve, reject) => {
-        const tx = db.transaction("favorites", "readonly");
-        const store = tx.objectStore("favorites");
-        const req = store.get(favId);
-        req.onsuccess = () => resolve(req.result);
-        req.onerror = () => reject(req.error);
-      });
-    }
-
     async function renderFavorites() {
-      const favListElem = document.getElementById('program-list');
+      const programListElem = document.getElementById("program-list");
       const existingFavSection = document.getElementById("favorites-section");
       if (existingFavSection) {
         existingFavSection.remove();
@@ -338,12 +324,10 @@
           };
           favSection.appendChild(li);
         });
-        const programList = document.getElementById("program-list");
-        programList.prepend(favSection);
+        programListElem.prepend(favSection);
       }
     }
 
-    // Einstellungen-Modal
     const settingsButton = document.getElementById("settings-button");
     const settingsModal = document.getElementById("settings-modal");
     const closeModal = document.querySelector(".close-modal");
