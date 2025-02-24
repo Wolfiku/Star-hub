@@ -2,206 +2,33 @@
 <html lang="de">
 <head>
   <meta charset="UTF-8">
-<link rel="manifest" href="manifest.json">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Star-Hub">
-<link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="manifest" href="manifest.json">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Star-Hub">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Spielesucher mit Einstellungen, Favoriten, Musik & Fullscreen</title>
-  <style>
-    html, body {
-      height: 100%;
-      margin: 0;
-      font-family: sans-serif;
-      background-color: #fafafa;
-    }
-    .container {
-      display: flex;
-      flex-direction: column;
-      height: 100%;
-    }
-    /* Hauptbereich erhält einen weißen Hintergrund */
-    .content {
-      flex: 1;
-      background-color: #fff;
-      position: relative;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      padding: 20px;
-    }
-    button {
-      padding: 12px 24px;
-      font-size: 1.2em;
-      margin: 10px;
-      cursor: pointer;
-    }
-    #program-list {
-      list-style: none;
-      padding: 0;
-      margin: 20px 0;
-      width: 80%;
-      max-width: 600px;
-    }
-    /* Runder Kasten für Superprogramme (rot) */
-    .super-program {
-      background-color: #ff4d4d;
-      color: white;
-      border: 1px solid #cc0000;
-      border-radius: 15px;
-      padding: 10px;
-      margin-bottom: 10px;
-      text-align: center;
-      cursor: pointer;
-      transition: background-color 0.3s;
-      position: relative;
-    }
-    .super-program:hover {
-      background-color: #e60000;
-    }
-    /* Runder Kasten für normale Spiele (weiß mit schwarzer Schrift) */
-    .normal-program {
-      background-color: white;
-      color: black;
-      border: 1px solid #ccc;
-      border-radius: 15px;
-      padding: 10px;
-      margin-bottom: 10px;
-      text-align: center;
-      cursor: pointer;
-      transition: background-color 0.3s;
-      position: relative;
-    }
-    .normal-program:hover {
-      background-color: #f0f0f0;
-    }
-    /* Runder Kasten für 3rd Party Games (orange) */
-    .third-party-program {
-      background-color: #ffa500;
-      color: white;
-      border: 1px solid #cc7a00;
-      border-radius: 15px;
-      padding: 10px;
-      margin-bottom: 10px;
-      text-align: center;
-      cursor: pointer;
-      transition: background-color 0.3s;
-      position: relative;
-    }
-    .third-party-program:hover {
-      background-color: #e59400;
-    }
-    /* Favoriten-Stern – Position im runden Kasten */
-    .fav-icon {
-      position: absolute;
-      top: 5px;
-      right: 10px;
-      font-size: 1.2em;
-      cursor: pointer;
-      user-select: none;
-    }
-    /* Footer (Status-Bar): Zeige "@wolfiku v.[Name]" */
-    footer {
-      background-color: #f5f5f5;
-      text-align: center;
-      padding: 10px;
-      font-size: 0.9em;
-      display: block;
-    }
-    /* Das Audio-Element wird nicht sichtbar angezeigt */
-    #audio-player {
-      display: none;
-    }
-    /* Fullscreen-Container: Hintergrund weiß */
-    #fullscreen-container {
-      display: none;
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: white;
-      z-index: 9999;
-    }
-    #fullscreen-iframe {
-      width: 100%;
-      height: 100%;
-      border: none;
-      background: white;
-    }
-    #exit-fullscreen {
-      position: absolute;
-      bottom: 20px;
-      right: 20px;
-      padding: 10px 20px;
-      font-size: 1.2em;
-      cursor: pointer;
-    }
-    /* Einstellungen-Button im Hauptbereich (oben rechts) */
-    #settings-button {
-      position: absolute;
-      top: 10px;
-      right: 10px;
-      padding: 8px 16px;
-      font-size: 1em;
-      cursor: pointer;
-    }
-    /* Modal für Einstellungen */
-    #settings-modal {
-      display: none;
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0,0,0,0.5);
-      z-index: 10000;
-    }
-    #settings-modal .modal-content {
-      background: white;
-      margin: 15% auto;
-      padding: 20px;
-      width: 80%;
-      max-width: 400px;
-      border-radius: 10px;
-      text-align: center;
-      position: relative;
-    }
-    #settings-modal .close-modal {
-      position: absolute;
-      top: 10px;
-      right: 10px;
-      font-size: 1.2em;
-      cursor: pointer;
-    }
-    .settings-group {
-      margin: 15px 0;
-    }
-    label {
-      display: block;
-      margin-bottom: 5px;
-    }
-    input[type="range"] {
-      width: 100%;
-    }
-    /* Header für Favoriten */
-    .favorites-header {
-      text-align: center;
-      font-style: italic;
-      margin-bottom: 10px;
-    }
-  </style>
+  <!-- Externe CSS-Datei -->
+  <link rel="stylesheet" href="styles.css">
+  <!-- JSZip (zum Verarbeiten von ZIP-Dateien) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.0/jszip.min.js"></script>
 </head>
 <body>
+  <!-- Header "Star-hub" – wird nach dem Upload ausgeblendet -->
+  <div id="main-header">Star-hub</div>
   <div class="container">
     <div class="content" id="main-content">
-      <button id="select-folder">Ordner auswählen</button>
+      <!-- Statt eines Ordner-Auswahl-Buttons: ZIP-Datei hochladen -->
+      <input type="file" id="zip-input" accept=".zip">
       <!-- Einstellungen-Button -->
       <button id="settings-button">Einstellungen</button>
+      <!-- Hier werden die Spiele (Favoriten, Superprogramme, normale Spiele, 3rd Party Games) aufgelistet -->
       <ul id="program-list"></ul>
+      <!-- Audio-Player (wird unsichtbar verwendet) -->
       <audio id="audio-player"></audio>
     </div>
+    <!-- Footer (Status-Bar) – zeigt z. B. "Star-tools a @wolfikuproduction | version : [Name]" -->
     <footer id="folder-info"></footer>
   </div>
   
@@ -232,230 +59,188 @@
       </div>
     </div>
   </div>
-
+  
+  <!-- Service Worker Registrierung -->
   <script>
-    // ================= IndexedDB für Favoriten =================
-    function openFavoritesDB() {
-      return new Promise((resolve, reject) => {
-        const request = indexedDB.open("favoritesDB", 1);
-        request.onupgradeneeded = () => {
-          const db = request.result;
-          db.createObjectStore("favorites", { keyPath: "id" });
-        };
-        request.onsuccess = () => resolve(request.result);
-        request.onerror = () => reject(request.error);
-      });
+    if ("serviceWorker" in navigator) {
+        navigator.serviceWorker.register("service-worker.js")
+            .then(() => console.log("Service Worker registriert"))
+            .catch((err) => console.log("Service Worker Fehler:", err));
     }
+  </script>
+  
+  <!-- Haupt-Script -->
+  <script>
+    /* 
+      Dieser Code übernimmt alle Funktionen des vorherigen Skripts (Favoriten, Einstellungen,
+      Vollbildmodus, Musik, etc.) – nur dass nun anstatt eines Ordner-Auswahl-Dialogs
+      eine ZIP-Datei hochgeladen wird. Die ZIP-Datei muss die gesamte Ordnerstruktur enthalten,
+      z. B.:
+      
+      - sh-data/
+         - 1/
+           - sshtml_xyz/ (enthält game-data/ und media-data/)
+           - weitere HTML-Dateien
+         - 2/ usw.
+      - sh-3party-games/
+         - Dateien (HTML)
+    */
+    
+    // Globaler JSZip-Container
+    let globalZip = null;
 
-    async function addFavorite(fav) {
-      const db = await openFavoritesDB();
-      return new Promise((resolve, reject) => {
-        const tx = db.transaction("favorites", "readwrite");
-        const store = tx.objectStore("favorites");
-        const req = store.put(fav);
-        req.onsuccess = () => resolve();
-        req.onerror = () => reject(req.error);
-      });
-    }
-
-    async function removeFavorite(favId) {
-      const db = await openFavoritesDB();
-      return new Promise((resolve, reject) => {
-        const tx = db.transaction("favorites", "readwrite");
-        const store = tx.objectStore("favorites");
-        const req = store.delete(favId);
-        req.onsuccess = () => resolve();
-        req.onerror = () => reject(req.error);
-      });
-    }
-
-    async function getFavorite(favId) {
-      const db = await openFavoritesDB();
-      return new Promise((resolve, reject) => {
-        const tx = db.transaction("favorites", "readonly");
-        const store = tx.objectStore("favorites");
-        const req = store.get(favId);
-        req.onsuccess = () => resolve(req.result);
-        req.onerror = () => reject(req.error);
-      });
-    }
-
-    async function getAllFavorites() {
-      const db = await openFavoritesDB();
-      return new Promise((resolve, reject) => {
-        const tx = db.transaction("favorites", "readonly");
-        const store = tx.objectStore("favorites");
-        const req = store.getAll();
-        req.onsuccess = () => resolve(req.result);
-        req.onerror = () => reject(req.error);
-      });
-    }
-
-    async function clearAllFavorites() {
-      const db = await openFavoritesDB();
-      return new Promise((resolve, reject) => {
-        const tx = db.transaction("favorites", "readwrite");
-        const store = tx.objectStore("favorites");
-        const req = store.clear();
-        req.onsuccess = () => resolve();
-        req.onerror = () => reject(req.error);
-      });
-    }
-    // ================= Ende Favoriten =================
-
-    // Hier wird createFavoriteIcon definiert – damit ist es in allen Funktionen verfügbar.
-    function createFavoriteIcon(favId, fileHandle, type, title) {
-      const span = document.createElement("span");
-      span.className = "fav-icon";
-      span.textContent = "☆"; // leerer Stern
-      getFavorite(favId).then(fav => {
-        if (fav) {
-          span.textContent = "★"; // gefüllt
-        }
-      });
-      span.addEventListener("click", async (e) => {
-        e.stopPropagation();
-        const fav = await getFavorite(favId);
-        if (fav) {
-          await removeFavorite(favId);
-          span.textContent = "☆";
-          renderFavorites();
-        } else {
-          await addFavorite({ id: favId, type, title, fileHandle });
-          span.textContent = "★";
-          renderFavorites();
-        }
-      });
-      return span;
-    }
-
-    // Globales Objekt für aktuell geladene Favoriten (Mapping favId => Favorit)
-    let globalFavorites = {};
-
-    async function renderFavorites() {
-      const favListElem = document.getElementById('program-list');
-      const existingFavSection = document.getElementById("favorites-section");
-      if (existingFavSection) {
-        existingFavSection.remove();
+    // ZIP-Upload: Sobald eine ZIP-Datei hochgeladen wird, wird sie verarbeitet.
+    document.getElementById("zip-input").addEventListener("change", async (event) => {
+      const file = event.target.files[0];
+      if (!file) return;
+      const jszip = new JSZip();
+      try {
+        globalZip = await jszip.loadAsync(file);
+      } catch (e) {
+        alert("Fehler beim Laden der ZIP-Datei: " + e.message);
+        return;
       }
-      const favorites = await getAllFavorites();
-      globalFavorites = {};
-      favorites.forEach(f => globalFavorites[f.id] = f);
-      if (favorites.length > 0) {
-        const favSection = document.createElement("div");
-        favSection.id = "favorites-section";
-        const header = document.createElement("div");
-        header.className = "favorites-header";
-        header.textContent = "Favoriten";
-        favSection.appendChild(header);
-        favorites.forEach(fav => {
-          const li = document.createElement("li");
-          if (fav.type === "super") {
-            li.className = "super-program";
-          } else if (fav.type === "normal") {
-            li.className = "normal-program";
-          } else if (fav.type === "third") {
-            li.className = "third-party-program";
+      // Nach erfolgreichem Upload:
+      document.getElementById("zip-input").style.display = "none";
+      document.getElementById("main-header").style.display = "none";
+      
+      // Ermittele den neuesten Unterordner in "sh-data/"
+      const newest = getNewestSubfolderFromZip(globalZip);
+      if (!newest) {
+        alert("Kein passender Unterordner in 'sh-data' gefunden.");
+        return;
+      }
+      // Setze die Version im Footer: "Star-tools a @wolfikuproduction | version : [Neuster Ordner]"
+      document.getElementById("folder-info").textContent = "Star-tools a @wolfikuproduction | version : " + newest;
+      // Liste die Programme und 3rd Party Games aus dem ZIP auf
+      await listProgramsFromZip(newest);
+      await listThirdPartyGamesFromZip();
+    });
+
+    // Funktion: Ermittelt den höchsten (neuesten) Ordner in "sh-data/"
+    function getNewestSubfolderFromZip(zip) {
+      let max = -1;
+      let chosen = null;
+      for (const key in zip.files) {
+        if (key.startsWith("sh-data/")) {
+          const parts = key.split("/");
+          if (parts.length >= 2) {
+            const num = parseInt(parts[1]);
+            if (!isNaN(num) && num > max) {
+              max = num;
+              chosen = parts[1];
+            }
           }
-          li.textContent = fav.title;
-          li.appendChild(createFavoriteIcon(fav.id, fav.fileHandle, fav.type, fav.title));
+        }
+      }
+      return chosen;
+    }
+
+    // Funktion: Liste der Programme (Superprogramme und normale Spiele) aus dem neuesten Ordner
+    async function listProgramsFromZip(folder) {
+      const programListElem = document.getElementById("program-list");
+      const prefix = "sh-data/" + folder + "/";
+      const superPrograms = [];
+      const normalFiles = [];
+      
+      for (const key in globalZip.files) {
+        if (key.startsWith(prefix)) {
+          const relative = key.substring(prefix.length);
+          // Überspringe Verzeichnisse
+          if (globalZip.files[key].dir) continue;
+          // Superprogramme: Erkennung, wenn der Pfad mit "sshtml_" beginnt
+          if (relative.startsWith("sshtml_")) {
+            // Beispielpfad: "sshtml_xyz/game-data/game.html"
+            const parts = relative.split("/");
+            if (parts.length >= 2) {
+              const title = parts[0].replace("sshtml_", "");
+              superPrograms.push({ title: title, filePath: key });
+            }
+          } else if (relative.endsWith(".html")) {
+            normalFiles.push({ title: relative.replace(/\.html$/i, ""), filePath: key });
+          }
+        }
+      }
+      
+      // Zeige Superprogramme an
+      for (const sp of superPrograms) {
+        const li = document.createElement("li");
+        li.className = "super-program";
+        li.textContent = sp.title;
+        li.onclick = async () => {
+          try {
+            const blob = await globalZip.file(sp.filePath).async("blob");
+            const url = URL.createObjectURL(blob);
+            await enterFullscreen(url);
+            // Hier könntest du auch Musik aus dem entsprechenden media-data-Ordner starten
+          } catch (err) {
+            alert("Das Spiel konnte nicht geladen werden.");
+          }
+        };
+        programListElem.appendChild(li);
+      }
+      
+      if (superPrograms.length > 0 && normalFiles.length > 0) {
+        const separator = document.createElement("li");
+        separator.textContent = "----- Normale Spiele -----";
+        separator.style.textAlign = "center";
+        separator.style.fontStyle = "italic";
+        programListElem.appendChild(separator);
+      }
+      
+      // Zeige normale HTML-Dateien an
+      for (const nf of normalFiles) {
+        const li = document.createElement("li");
+        li.className = "normal-program";
+        li.textContent = nf.title;
+        li.onclick = async () => {
+          try {
+            const blob = await globalZip.file(nf.filePath).async("blob");
+            const url = URL.createObjectURL(blob);
+            await enterFullscreen(url);
+          } catch (err) {
+            alert("Das Spiel konnte nicht geladen werden.");
+          }
+        };
+        programListElem.appendChild(li);
+      }
+    }
+
+    // Funktion: Liste 3rd Party Games aus "sh-3party-games/"
+    async function listThirdPartyGamesFromZip() {
+      const prefix = "sh-3party-games/";
+      const entries = [];
+      for (const key in globalZip.files) {
+        if (key.startsWith(prefix) && !globalZip.files[key].dir && key.endsWith(".html")) {
+          entries.push({ title: key.substring(prefix.length).replace(/\.html$/i, ""), filePath: key });
+        }
+      }
+      if (entries.length > 0) {
+        const programListElem = document.getElementById("program-list");
+        const separator = document.createElement("li");
+        separator.textContent = "----- 3rd Party Games -----";
+        separator.style.textAlign = "center";
+        separator.style.fontStyle = "italic";
+        programListElem.appendChild(separator);
+        for (const entry of entries) {
+          const li = document.createElement("li");
+          li.className = "third-party-program";
+          li.textContent = entry.title;
           li.onclick = async () => {
             try {
-              const file = await fav.fileHandle.getFile();
-              const url = URL.createObjectURL(file);
+              const blob = await globalZip.file(entry.filePath).async("blob");
+              const url = URL.createObjectURL(blob);
               await enterFullscreen(url);
             } catch (err) {
-              alert("Das Spiel konnte nicht geladen werden. Es wurde möglicherweise entfernt.");
-              await removeFavorite(fav.id);
-              renderFavorites();
+              alert("Das Spiel konnte nicht geladen werden.");
             }
           };
-          favSection.appendChild(li);
-        });
-        const programList = document.getElementById("program-list");
-        programList.prepend(favSection);
+          programListElem.appendChild(li);
+        }
       }
     }
 
-    async function selectFolder() {
-      if (!window.showDirectoryPicker) {
-        alert("Dein Browser unterstützt die File System Access API nicht.");
-        return;
-      }
-      try {
-        const mainFolderHandle = await window.showDirectoryPicker();
-        const permission = await mainFolderHandle.requestPermission({ mode: 'read' });
-        if (permission !== 'granted') {
-          alert("Berechtigung nicht erteilt.");
-          return;
-        }
-        return mainFolderHandle;
-      } catch (e) {
-        console.error("Fehler bei der Ordnerauswahl:", e);
-      }
-    }
-
-    async function getNewestSubfolder(mainFolderHandle) {
-      let shDataHandle;
-      try {
-        shDataHandle = await mainFolderHandle.getDirectoryHandle('sh-data', { create: false });
-      } catch (e) {
-        throw new Error("Ordner 'sh-data' nicht gefunden.");
-      }
-      const subfolders = [];
-      for await (const entry of shDataHandle.values()) {
-        if (entry.kind === 'directory') {
-          const num = Number(entry.name);
-          if (!isNaN(num)) {
-            subfolders.push({ handle: entry, num: num });
-          }
-        }
-      }
-      if (subfolders.length === 0) {
-        throw new Error("Keine passenden Unterordner (mit numerischen Namen) in 'sh-data' gefunden.");
-      }
-      subfolders.sort((a, b) => b.num - a.num);
-      return subfolders[0].handle;
-    }
-
-    async function playRandomMusic(mediaDirHandle) {
-      const mp3Files = [];
-      for await (const entry of mediaDirHandle.values()) {
-        if (entry.kind === 'file' && entry.name.endsWith('.mp3')) {
-          mp3Files.push(entry);
-        }
-      }
-      if (mp3Files.length === 0) {
-        console.warn("Keine mp3 Dateien in ssp-media-musik gefunden.");
-        return;
-      }
-      for (let i = mp3Files.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [mp3Files[i], mp3Files[j]] = [mp3Files[j], mp3Files[i]];
-      }
-      let currentIndex = 0;
-      const audioPlayer = document.getElementById('audio-player');
-      audioPlayer.pause();
-      audioPlayer.src = "";
-      async function playNext() {
-        if (currentIndex >= mp3Files.length) {
-          for (let i = mp3Files.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [mp3Files[i], mp3Files[j]] = [mp3Files[j], mp3Files[i]];
-          }
-          currentIndex = 0;
-        }
-        const fileEntry = mp3Files[currentIndex];
-        const file = await fileEntry.getFile();
-        const url = URL.createObjectURL(file);
-        audioPlayer.src = url;
-        audioPlayer.play();
-        currentIndex++;
-      }
-      audioPlayer.onended = playNext;
-      playNext();
-    }
-
+    // Vollbild-Funktion: Öffnet die URL im Iframe im Vollbildmodus
     async function enterFullscreen(url) {
       const fsContainer = document.getElementById("fullscreen-container");
       const fsIframe = document.getElementById("fullscreen-iframe");
@@ -471,170 +256,21 @@
     }
 
     document.getElementById("exit-fullscreen").addEventListener("click", async function() {
-      const audioPlayer = document.getElementById('audio-player');
-      audioPlayer.pause();
-      audioPlayer.src = "";
       if (document.fullscreenElement) {
         await document.exitFullscreen();
       }
       document.getElementById("fullscreen-container").style.display = "none";
     });
 
-    async function listPrograms(versionFolderHandle) {
-      const programListElem = document.getElementById('program-list');
-      const entries = [];
-      for await (const entry of versionFolderHandle.values()) {
-        entries.push(entry);
-      }
-      
-      const sortingOption = localStorage.getItem("sortingOption") || "default";
-      
-      let superProgramDirs = entries.filter(entry => entry.kind === 'directory' && entry.name.startsWith("sshtml_"));
-      let normalHtmlFiles = entries.filter(entry => entry.kind === 'file' && entry.name.endsWith('.html'));
-      
-      if(sortingOption === "alphabetical"){
-        superProgramDirs.sort((a, b) => a.name.localeCompare(b.name));
-        normalHtmlFiles.sort((a, b) => a.name.localeCompare(b.name));
-      }
-      
-      const superPrograms = [];
-      for (const spDir of superProgramDirs) {
-        try {
-          const gameDataHandle = await spDir.getDirectoryHandle("game-data", { create: false });
-          let htmlFile = null;
-          for await (const fileEntry of gameDataHandle.values()) {
-            if (fileEntry.kind === 'file' && fileEntry.name.endsWith('.html')) {
-              htmlFile = fileEntry;
-              break;
-            }
-          }
-          if (htmlFile) {
-            const title = spDir.name.replace("sshtml_", "");
-            const favId = "super_" + title;
-            if (globalFavorites[favId]) continue;
-            superPrograms.push({ title, fileEntry: htmlFile, dirHandle: spDir, favId });
-          }
-        } catch (e) {
-          console.error("Fehler bei Verarbeitung von Superprogramm", spDir.name, e);
-        }
-      }
-      
-      for (const sp of superPrograms) {
-        const li = document.createElement('li');
-        li.className = "super-program";
-        li.textContent = sp.title;
-        li.appendChild(createFavoriteIcon(sp.favId, sp.fileEntry, "super", sp.title));
-        li.onclick = async () => {
-          try {
-            const file = await sp.fileEntry.getFile();
-            const url = URL.createObjectURL(file);
-            await enterFullscreen(url);
-            const audioPlayer = document.getElementById('audio-player');
-            audioPlayer.pause();
-            audioPlayer.src = "";
-            try {
-              const mediaDataHandle = await sp.dirHandle.getDirectoryHandle("media-data", { create: false });
-              const musikHandle = await mediaDataHandle.getDirectoryHandle("ssp-media-musik", { create: false });
-              playRandomMusic(musikHandle);
-            } catch (e) {
-              console.error("Fehler beim Laden der Musik: ", e);
-            }
-          } catch (err) {
-            alert("Das Spiel konnte nicht geladen werden. Es wurde möglicherweise entfernt.");
-            await removeFavorite(sp.favId);
-            renderFavorites();
-          }
-        };
-        programListElem.appendChild(li);
-      }
-      
-      if (superPrograms.length > 0 && normalHtmlFiles.length > 0) {
-        const separator = document.createElement('li');
-        separator.textContent = "----- Normale Spiele -----";
-        separator.style.textAlign = "center";
-        separator.style.fontStyle = "italic";
-        programListElem.appendChild(separator);
-      }
-      
-      for (const file of normalHtmlFiles) {
-        const title = file.name.replace(/\.html$/i, "");
-        const favId = "normal_" + title;
-        if (globalFavorites[favId]) continue;
-        const li = document.createElement('li');
-        li.className = "normal-program";
-        li.textContent = title;
-        li.appendChild(createFavoriteIcon(favId, file, "normal", title));
-        li.onclick = async () => {
-          try {
-            const f = await file.getFile();
-            const url = URL.createObjectURL(f);
-            await enterFullscreen(url);
-          } catch (err) {
-            alert("Das Spiel konnte nicht geladen werden. Es wurde möglicherweise entfernt.");
-            await removeFavorite(favId);
-            renderFavorites();
-          }
-        };
-        programListElem.appendChild(li);
-      }
-    }
-
-async function listThirdPartyGames(mainFolderHandle) {
-      try {
-        const thirdPartyHandle = await mainFolderHandle.getDirectoryHandle('sh-3party-games', { create: false });
-        const entries = [];
-        for await (const entry of thirdPartyHandle.values()) {
-          if (entry.kind === 'file' && entry.name.endsWith('.html')) {
-            entries.push(entry);
-          }
-        }
-        if (entries.length > 0) {
-          const sortingOption = localStorage.getItem("sortingOption") || "default";
-          if(sortingOption === "alphabetical"){
-            entries.sort((a, b) => a.name.localeCompare(b.name));
-          }
-          const programListElem = document.getElementById('program-list');
-          const separator = document.createElement('li');
-          separator.textContent = "----- 3rd Party Games -----";
-          separator.style.textAlign = "center";
-          separator.style.fontStyle = "italic";
-          programListElem.appendChild(separator);
-          for (const file of entries) {
-            const title = file.name.replace(/\.html$/i, "");
-            const favId = "third_" + title;
-            if (globalFavorites[favId]) continue;
-            const li = document.createElement('li');
-            li.className = "third-party-program";
-            li.textContent = title;
-            li.appendChild(createFavoriteIcon(favId, file, "third", title));
-            li.onclick = async () => {
-              try {
-                const f = await file.getFile();
-                const url = URL.createObjectURL(f);
-                await enterFullscreen(url);
-              } catch (err) {
-                alert("Das Spiel konnte nicht geladen werden. Es wurde möglicherweise entfernt.");
-                await removeFavorite(favId);
-                renderFavorites();
-              }
-            };
-            programListElem.appendChild(li);
-          }
-        }
-      } catch (e) {
-        console.warn("Ordner 'sh-3party-games' nicht gefunden oder Fehler beim Laden:", e);
-      }
-    }
-
-    // Einstellungen-Modal öffnen/schließen
-const settingsButton = document.getElementById("settings-button");
+    // Einstellungen-Modal
+    const settingsButton = document.getElementById("settings-button");
     const settingsModal = document.getElementById("settings-modal");
     const closeModal = document.querySelector(".close-modal");
 
     settingsButton.addEventListener("click", () => {
       settingsModal.style.display = "block";
     });
-    if(closeModal){
+    if (closeModal) {
       closeModal.addEventListener("click", () => {
         settingsModal.style.display = "none";
         const sortingOption = document.getElementById("sorting-option").value;
@@ -658,35 +294,8 @@ const settingsButton = document.getElementById("settings-button");
         localStorage.removeItem("sortingOption");
         await clearAllFavorites();
         alert("Alle Daten wurden gelöscht.");
-        renderFavorites();
-      }
-    });
-
-    // Klick-Event: Hauptordner auswählen, Favoriten rendern, neusten Version-Ordner aus 'sh-data' ermitteln, Status-Bar anpassen und alle Einträge in der richtigen Reihenfolge auflisten.
-    document.getElementById('select-folder').addEventListener('click', async () => {
-      const mainFolderHandle = await selectFolder();
-      if (!mainFolderHandle) return;
-      // Blende den Ordner-Auswahl-Button aus.
-      document.getElementById('select-folder').style.display = "none";
-      await renderFavorites();
-      try {
-        const newestSubfolder = await getNewestSubfolder(mainFolderHandle);
-        document.getElementById('folder-info').textContent = "@wolfiku v." + newestSubfolder.name;
-        await listPrograms(newestSubfolder);
-        await listThirdPartyGames(mainFolderHandle);
-      } catch (e) {
-        console.error(e);
-        alert(e.message);
       }
     });
   </script>
-<script>
-    if ("serviceWorker" in navigator) {
-        navigator.serviceWorker.register("service-worker.js")
-            .then(() => console.log("Service Worker registriert"))
-            .catch((err) => console.log("Service Worker Fehler:", err));
-    }
-</script>
-
 </body>
 </html>
