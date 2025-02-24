@@ -38,25 +38,7 @@ button {
   max-width: 600px;
 }
 
-/* Runder Kasten für Superprogramme (rot) */
-.super-program {
-  background-color: #ff4d4d;
-  color: white;
-  border: 1px solid #cc0000;
-  border-radius: 15px;
-  padding: 10px;
-  margin-bottom: 10px;
-  text-align: center;
-  cursor: pointer;
-  transition: background-color 0.3s;
-  position: relative;
-}
-
-.super-program:hover {
-  background-color: #e60000;
-}
-
-/* Runder Kasten für normale Spiele (weiß mit schwarzer Schrift) */
+/* Normaler Kasten für HTML-Dateien */
 .normal-program {
   background-color: white;
   color: black;
@@ -72,24 +54,6 @@ button {
 
 .normal-program:hover {
   background-color: #f0f0f0;
-}
-
-/* Runder Kasten für 3rd Party Games (orange) */
-.third-party-program {
-  background-color: #ffa500;
-  color: white;
-  border: 1px solid #cc7a00;
-  border-radius: 15px;
-  padding: 10px;
-  margin-bottom: 10px;
-  text-align: center;
-  cursor: pointer;
-  transition: background-color 0.3s;
-  position: relative;
-}
-
-.third-party-program:hover {
-  background-color: #e59400;
 }
 
 /* Favoriten-Stern – Position im runden Kasten */
@@ -208,4 +172,45 @@ input[type="range"] {
   text-align: center;
   font-style: italic;
   margin-bottom: 10px;
+}
+
+/* Upload-Bereich (Drag & Drop) */
+#upload-container {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+#upload-container h2 {
+  margin: 0;
+  font-size: 1.8em;
+}
+
+#upload-container p {
+  margin: 5px 0 15px;
+  font-size: 1.1em;
+  color: #555;
+}
+
+/* Drop-Zone */
+#drop-zone {
+  border: 2px dashed #ccc;
+  border-radius: 10px;
+  padding: 20px;
+  text-align: center;
+  width: 80%;
+  max-width: 600px;
+  margin: auto;
+  cursor: pointer;
+}
+
+#drop-zone.dragover {
+  background-color: #eee;
+}
+
+/* Reupload-Button */
+#reupload-button {
+  padding: 10px 20px;
+  font-size: 1.2em;
+  margin: 10px;
+  cursor: pointer;
 }
