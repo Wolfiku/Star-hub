@@ -191,26 +191,18 @@ input[type="range"] {
   color: #555;
 }
 
-/* Drop-Zone */
+/* Drop-Zone: Klein, viereckig */
 #drop-zone {
   border: 2px dashed #ccc;
-  border-radius: 10px;
-  padding: 20px;
+  border-radius: 5px;
+  padding: 15px;
   text-align: center;
-  width: 80%;
-  max-width: 600px;
+  width: 300px;
+  height: 100px;
   margin: auto;
   cursor: pointer;
 }
 
 #drop-zone.dragover {
   background-color: #eee;
-}
-
-/* Reupload-Button */
-#reupload-button {
-  padding: 10px 20px;
-  font-size: 1.2em;
-  margin: 10px;
-  cursor: pointer;
 }
