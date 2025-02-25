@@ -191,8 +191,8 @@ input[type="range"] {
   color: #555;
 }
 
-/* Drop-Zone: Klein, viereckig */
-#drop-zone {
+/* Drop-Zone und Reupload-Zone: Klein, viereckig */
+#drop-zone, #reupload-zone {
   border: 2px dashed #ccc;
   border-radius: 5px;
   padding: 15px;
@@ -203,6 +203,12 @@ input[type="range"] {
   cursor: pointer;
 }
 
-#drop-zone.dragover {
+#drop-zone.dragover, #reupload-zone.dragover {
   background-color: #eee;
+}
+
+/* Reupload-Zone (unten) */
+#reupload-zone {
+  margin-top: 20px;
+  font-size: 0.9em;
 }
