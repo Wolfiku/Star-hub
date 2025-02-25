@@ -8,29 +8,30 @@
   <meta name="apple-mobile-web-app-title" content="Star-Hub">
   <link rel="apple-touch-icon" href="icons/icon-192.png">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Star-Hub – ZIP-Version</title>
+  <title>Star-Hub – ZIP/HTML-Version</title>
   <link rel="stylesheet" href="styles.css">
-  <!-- JSZip zum Verarbeiten der ZIP-Datei -->
+  <!-- JSZip zum Verarbeiten von ZIP-Dateien -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.0/jszip.min.js"></script>
 </head>
 <body>
-  <!-- Der Header "Star-hub" wurde entfernt -->
+  <!-- Kein Header mehr, da der alte Text entfernt wurde -->
   <div class="container">
     <div class="content" id="main-content">
       <!-- Upload-Bereich mit Drag & Drop -->
       <div id="upload-container">
         <h2>Willkommen bei Star-hub</h2>
         <p>Bitte wähle ein Gameplack (ZIP-Format) aus</p>
-        <div id="drop-zone">ZIP-Datei hierher ziehen oder klicken</div>
+        <div id="drop-zone">ZIP- oder HTML-Datei hierher ziehen oder klicken</div>
       </div>
-      <!-- Unsichtbarer Datei-Input -->
-      <input type="file" id="zip-input" accept=".zip" style="display:none;">
+      <!-- Unsichtbarer Datei-Input; nun akzeptiert ZIP und HTML -->
+      <input type="file" id="zip-input" accept=".zip,.html" style="display:none;">
       <!-- Einstellungen-Button -->
       <button id="settings-button">Einstellungen</button>
       <!-- Hier werden die HTML-Dateien (und Favoriten) aufgelistet -->
       <ul id="program-list"></ul>
-      <!-- Reupload-Bereich: "weiteres gamepack hinzufügen" -->
-      <button id="reupload-button" style="display:none;">weiteres gamepack hinzufügen</button>
+      <!-- Der Reupload-/Weiteres-Gamepack-Button bleibt sichtbar (dauerhaft) -->
+      <button id="reupload-button" style="display:block;">weiteres gamepack hinzufügen</button>
+      <!-- Audio-Player (wird nicht verwendet) -->
       <audio id="audio-player" style="display:none;"></audio>
     </div>
     <footer id="folder-info">Star-tools a @wolfikuproduction | version : 2</footer>
@@ -72,16 +73,18 @@
   <!-- Haupt-Script -->
   <script>
     /*
-      Diese Version verwendet ein dauerhaft sichtbares Drag & Drop-Feld für den ZIP-Upload.
-      Neue ZIP-Dateien werden in die bestehende Sammlung integriert, sodass neue Spiele
-      einfach zu den bereits vorhandenen hinzugefügt werden. Doppelte Dateinamen werden dedupliziert.
+      Diese Version erlaubt den Upload von ZIP- und HTML-Dateien über Drag & Drop
+      oder per Klick. Nach dem ersten Upload (ZIP oder HTML) werden neue Dateien zu
+      den bereits vorhandenen Spielen hinzugefügt, ohne diese zu löschen.
+      Doppelte Dateinamen werden dedupliziert.
       Favoriten, Einstellungen und der Fullscreen-Modus bleiben erhalten.
     */
     
-    let globalZip = null;           // Aktuell geladene ZIP-Datei (wird nicht zurückgesetzt)
+    let globalZip = null;           // Enthält das aktuell geladene ZIP (nur wenn eine ZIP hochgeladen wurde)
     let globalGameFiles = {};       // Sammlung aller HTML-Dateien (Key = Dateipfad)
     let globalFavorites = {};       // Favoriten aus IndexedDB
 
+    // Wrapper-Funktion: Verpackt ein ZIP-Dateiobjekt in ein fileHandle-ähnliches Objekt
     function wrapZipFile(zipFile) {
       return {
         getFile: async function() {
@@ -89,7 +92,17 @@
         }
       };
     }
-
+    
+    // Falls eine einzelne HTML-Datei hochgeladen wird, wird ein Dummy-Objekt erzeugt,
+    // das ähnlich wie ein JSZip-Objekt funktioniert.
+    function wrapHTMLFile(file) {
+      return {
+        async async() {
+          return file;
+        }
+      };
+    }
+    
     // Elemente abrufen
     const dropZone = document.getElementById("drop-zone");
     const zipInput = document.getElementById("zip-input");
@@ -100,30 +113,39 @@
       e.preventDefault();
       dropZone.classList.add("dragover");
     });
-
     dropZone.addEventListener("dragleave", (e) => {
       e.preventDefault();
       dropZone.classList.remove("dragover");
     });
-
     dropZone.addEventListener("drop", async (e) => {
       e.preventDefault();
       dropZone.classList.remove("dragover");
       const file = e.dataTransfer.files[0];
-      processZipFile(file);
+      processFile(file);
     });
-
     dropZone.addEventListener("click", () => {
       zipInput.click();
     });
-
     zipInput.addEventListener("change", async (e) => {
       const file = e.target.files[0];
-      processZipFile(file);
+      processFile(file);
     });
 
-    async function processZipFile(file) {
+    // Prozessiert eine Datei (ZIP oder HTML)
+    async function processFile(file) {
       if (!file) return;
+      const ext = file.name.toLowerCase().split('.').pop();
+      if (ext === "zip") {
+        await processZipFile(file);
+      } else if (ext === "html") {
+        await processHTMLFile(file);
+      } else {
+        alert("Ungültiges Dateiformat. Bitte eine ZIP- oder HTML-Datei hochladen.");
+      }
+    }
+
+    // Verarbeitet eine ZIP-Datei
+    async function processZipFile(file) {
       const jszip = new JSZip();
       let newZip = null;
       try {
@@ -132,7 +154,7 @@
         alert("Fehler beim Laden der ZIP-Datei: " + e.message);
         return;
       }
-      // Neue Dateien in globalGameFiles integrieren
+      // Integriere alle HTML-Dateien aus der ZIP in globalGameFiles
       for (const key in newZip.files) {
         if (!newZip.files[key].dir && key.toLowerCase().endsWith(".html")) {
           if (!(key in globalGameFiles)) {
@@ -140,12 +162,33 @@
           }
         }
       }
-      // Falls erster Upload: Upload-Bereich ausblenden, Reupload-Button einblenden
-      if (document.getElementById("upload-container").style.display !== "none") {
+      // Falls dies der erste Upload war, wird der Upload-Bereich ausgeblendet
+      if(document.getElementById("upload-container").style.display !== "none"){
         document.getElementById("upload-container").style.display = "none";
-        reuploadButton.style.display = "block";
-        document.getElementById("folder-info").textContent = "Star-tools a @wolfikuproduction | version : 2";
       }
+      // Reupload-/Weiteres-Gamepack-Button bleibt immer sichtbar
+      reuploadButton.style.display = "block";
+      document.getElementById("folder-info").textContent = "Star-tools a @wolfikuproduction | version : 2";
+      await listHTMLFilesFromGlobalFiles();
+    }
+
+    // Verarbeitet eine einzelne HTML-Datei
+    async function processHTMLFile(file) {
+      // Erstelle einen eindeutigen Schlüssel, z.B. "uploaded/Dateiname.html"
+      let key = "uploaded/" + file.name;
+      // Falls der Schlüssel bereits existiert, hänge eine Zahl an
+      let counter = 1;
+      while(key in globalGameFiles) {
+        key = "uploaded/" + counter + "_" + file.name;
+        counter++;
+      }
+      globalGameFiles[key] = wrapHTMLFile(file);
+      // Falls der Upload-Bereich noch sichtbar ist (z.B. wenn noch nichts hochgeladen wurde), blende ihn aus
+      if(document.getElementById("upload-container").style.display !== "none"){
+        document.getElementById("upload-container").style.display = "none";
+      }
+      reuploadButton.style.display = "block";
+      document.getElementById("folder-info").textContent = "Star-tools a @wolfikuproduction | version : 2";
       await listHTMLFilesFromGlobalFiles();
     }
 
