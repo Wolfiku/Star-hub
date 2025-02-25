@@ -14,7 +14,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.0/jszip.min.js"></script>
 </head>
 <body>
-  <!-- Der alte Header "Star-hub" wurde entfernt -->
+  <!-- Kein Header mehr -->
   <div class="container">
     <div class="content" id="main-content">
       <!-- Upload-Bereich (nur beim ersten Upload sichtbar) -->
@@ -27,12 +27,10 @@
       <input type="file" id="zip-input" accept=".zip,.html" style="display:none;">
       <!-- Einstellungen-Button -->
       <button id="settings-button">Einstellungen</button>
-      <!-- Hier werden die HTML-Dateien (und Favoriten) aufgelistet -->
+      <!-- Liste der Programme/Favoriten -->
       <ul id="program-list"></ul>
-      <!-- Neuer Upload-Bereich für weitere Uploads, zunächst versteckt -->
-      <div id="reupload-zone" style="display:none;">
-        Weiteres Gamepack hinzufügen: ZIP- oder HTML-Datei hierher ziehen oder klicken
-      </div>
+      <!-- Reupload-Zone (unten) – zunächst unsichtbar -->
+      <div id="reupload-zone" style="display:none;">Weiteres Gamepack hinzufügen: ZIP- oder HTML-Datei hierher ziehen oder klicken</div>
       <audio id="audio-player" style="display:none;"></audio>
     </div>
     <footer id="folder-info">Star-tools a @wolfikuproduction | version : 2</footer>
@@ -74,17 +72,19 @@
   <!-- Haupt-Script -->
   <script>
     /*
-      Diese Version erlaubt den Upload von ZIP- und HTML-Dateien über Drag & Drop
-      oder per Klick. Beim ersten Upload wird der ursprüngliche Upload-Bereich (upload-container)
-      ausgeblendet und das zusätzliche Feld (reupload-zone) wird sichtbar. Neue Dateien werden
-      zu den bereits vorhandenen hinzugefügt, doppelte Dateinamen werden entfernt.
-      Favoriten, Einstellungen und der Fullscreen-Modus bleiben erhalten.
+      Diese Version erlaubt den Upload von ZIP- und HTML-Dateien per Drag & Drop oder Klick.
+      Wird in der ZIP-Datei ein Ordner gefunden, der eine index.html enthält, so wird dieser Ordner
+      als ein einzelnes Programm dargestellt (mit Ordnername als Titel).
+      Existieren keine solche Ordner, werden alle einzelnen HTML-Dateien (dedupliziert) wie bisher gelistet.
+      Neue Uploads (ZIP oder HTML) werden zu den bereits vorhandenen Einträgen hinzugefügt.
     */
     
-    let globalZip = null;           // Enthält das aktuell geladene ZIP (falls vorhanden)
+    let globalZip = null;           // Falls eine ZIP hochgeladen wurde
     let globalGameFiles = {};       // Sammlung aller HTML-Dateien (Key = Dateipfad)
+    let globalFolderPrograms = {};  // Sammlung von Ordnern mit index.html als komplette Website
     let globalFavorites = {};       // Favoriten aus IndexedDB
 
+    // Wrapper für ZIP-Dateien
     function wrapZipFile(zipFile) {
       return {
         getFile: async function() {
@@ -92,8 +92,7 @@
         }
       };
     }
-
-    // Falls eine einzelne HTML-Datei hochgeladen wird, wird ein Dummy-Objekt erzeugt.
+    // Wrapper für eine einzelne HTML-Datei
     function wrapHTMLFile(file) {
       return {
         async async() {
@@ -101,13 +100,13 @@
         }
       };
     }
-
-    // Elemente abrufen
+    
+    // Elemente
     const dropZone = document.getElementById("drop-zone");
     const zipInput = document.getElementById("zip-input");
     const reuploadZone = document.getElementById("reupload-zone");
-
-    // Funktion, um Drop-Zonen-Listener zu binden
+    
+    // Funktion zum Binden von Drag & Drop Events
     function attachDropZoneListeners(element) {
       element.addEventListener("dragover", (e) => {
         e.preventDefault();
@@ -127,16 +126,16 @@
         zipInput.click();
       });
     }
-
-    // Binde Listener an den anfänglichen Upload-Bereich und an den Reupload-Bereich
+    
+    // Binde Events an beide Drop-Bereiche
     attachDropZoneListeners(dropZone);
     attachDropZoneListeners(reuploadZone);
-
+    
     zipInput.addEventListener("change", async (e) => {
       const file = e.target.files[0];
       processFile(file);
     });
-
+    
     async function processFile(file) {
       if (!file) return;
       const ext = file.name.toLowerCase().split('.').pop();
@@ -148,8 +147,8 @@
         alert("Ungültiges Dateiformat. Bitte eine ZIP- oder HTML-Datei hochladen.");
       }
     }
-
-    // Verarbeitet eine ZIP-Datei
+    
+    // Verarbeitet eine ZIP-Datei und integriert deren Inhalte in globalGameFiles und globalFolderPrograms
     async function processZipFile(file) {
       const jszip = new JSZip();
       let newZip = null;
@@ -159,23 +158,35 @@
         alert("Fehler beim Laden der ZIP-Datei: " + e.message);
         return;
       }
-      // Füge alle HTML-Dateien aus der ZIP zur globalen Sammlung hinzu
+      // Durchlaufe alle Dateien in der ZIP
       for (const key in newZip.files) {
         if (!newZip.files[key].dir && key.toLowerCase().endsWith(".html")) {
-          if (!(key in globalGameFiles)) {
-            globalGameFiles[key] = newZip.files[key];
+          // Prüfe, ob der Dateiname "index.html" ist
+          if (key.toLowerCase().endsWith("index.html")) {
+            // Der Ordnername ist der erste Teil vor dem "/"
+            const parts = key.split("/");
+            const folderName = parts.length > 1 ? parts[0] : "root";
+            // Speichere diesen Ordner als komplettes Programm (falls nicht schon vorhanden)
+            if (!(folderName in globalFolderPrograms)) {
+              globalFolderPrograms[folderName] = { title: folderName, filePath: key };
+            }
+          } else {
+            // Einzelne HTML-Dateien (nicht index.html) werden in globalGameFiles gespeichert
+            if (!(key in globalGameFiles)) {
+              globalGameFiles[key] = newZip.files[key];
+            }
           }
         }
       }
-      // Falls dies der erste Upload ist, wird der Upload-Bereich ausgeblendet und reupload-zone sichtbar gemacht
+      // Falls erster Upload: Blende den Upload-Bereich aus und zeige reupload-zone
       if(document.getElementById("upload-container").style.display !== "none"){
         document.getElementById("upload-container").style.display = "none";
-        reuploadZone.style.display = "block";
       }
+      reuploadZone.style.display = "block";
       document.getElementById("folder-info").textContent = "Star-tools a @wolfikuproduction | version : 2";
-      await listHTMLFilesFromGlobalFiles();
+      await listPrograms();
     }
-
+    
     // Verarbeitet eine einzelne HTML-Datei
     async function processHTMLFile(file) {
       let key = "uploaded/" + file.name;
@@ -187,23 +198,29 @@
       globalGameFiles[key] = wrapHTMLFile(file);
       if(document.getElementById("upload-container").style.display !== "none"){
         document.getElementById("upload-container").style.display = "none";
-        reuploadZone.style.display = "block";
       }
+      reuploadZone.style.display = "block";
       document.getElementById("folder-info").textContent = "Star-tools a @wolfikuproduction | version : 2";
-      await listHTMLFilesFromGlobalFiles();
+      await listPrograms();
     }
-
-    // Listet alle HTML-Dateien aus globalGameFiles auf (doppelte Titel werden entfernt)
-    async function listHTMLFilesFromGlobalFiles() {
+    
+    // Listet alle Programme auf:
+    // Zuerst Ordnerprogramme (also Ordner, die eine index.html enthalten)
+    // Falls keine gefunden werden, oder zusätzlich, werden einzelne HTML-Dateien (dedupliziert) gelistet.
+    async function listPrograms() {
       const programListElem = document.getElementById("program-list");
       programListElem.innerHTML = "";
       const sortingOption = localStorage.getItem("sortingOption") || "default";
+      
+      // Ordnerprogramme (vollständige Gamepacks)
+      let folderPrograms = Object.values(globalFolderPrograms);
+      // Einzelne HTML-Dateien
       let files = [];
       for (const key in globalGameFiles) {
         const filename = key.split("/").pop().replace(/\.html$/i, "");
         files.push({ title: filename, filePath: key });
       }
-      // Dedupliziere Dateien anhand des Titels
+      // Dedupliziere einzelne Dateien anhand des Titels
       let uniqueFiles = {};
       files.forEach(file => {
         if (!uniqueFiles[file.title]) {
@@ -211,7 +228,9 @@
         }
       });
       files = Object.values(uniqueFiles);
+      
       if (sortingOption === "alphabetical") {
+        folderPrograms.sort((a, b) => a.title.localeCompare(b.title));
         files.sort((a, b) => a.title.localeCompare(b.title));
       }
       
@@ -229,33 +248,47 @@
         });
       }
       
-      files.forEach(file => {
-        if (!globalFavorites["file_" + file.title]) {
-          createProgramListItem(file.title, file.filePath, false);
-        }
-      });
+      // Falls Ordnerprogramme vorhanden, diese bevorzugt anzeigen:
+      if (folderPrograms.length > 0) {
+        folderPrograms.forEach(prog => {
+          createProgramListItem(prog.title, prog.filePath, false);
+        });
+      } else {
+        // Andernfalls, zeige einzelne HTML-Dateien
+        files.forEach(file => {
+          if (!globalFavorites["file_" + file.title]) {
+            createProgramListItem(file.title, file.filePath, false);
+          }
+        });
+      }
     }
-
+    
     function createProgramListItem(title, filePath, isFavorite) {
       const programListElem = document.getElementById("program-list");
       const li = document.createElement("li");
       li.className = "normal-program";
       li.textContent = title;
       const favId = "file_" + title;
-      li.appendChild(createFavoriteIcon(favId, wrapZipFile(globalGameFiles[filePath]), "normal", title));
+      li.appendChild(createFavoriteIcon(favId, wrapZipFile(globalGameFiles[filePath] || { async: async()=>{} }), "normal", title));
       li.onclick = async () => {
         try {
-          const blob = await globalGameFiles[filePath].async("blob");
+          // Falls der Eintrag aus einem Ordnerprogramm stammt, benutze den index.html Blob
+          let fileObj = globalGameFiles[filePath];
+          if (!fileObj) {
+            alert("Datei nicht gefunden.");
+            return;
+          }
+          const blob = await fileObj.async("blob");
           const htmlBlob = new Blob([blob], { type: "text/html" });
           const url = URL.createObjectURL(htmlBlob);
           await enterFullscreen(url);
         } catch (err) {
-          alert("Das Spiel konnte nicht geladen werden.");
+          alert("Das Programm konnte nicht geladen werden.");
         }
       };
       programListElem.appendChild(li);
     }
-
+    
     async function enterFullscreen(url) {
       const fsContainer = document.getElementById("fullscreen-container");
       const fsIframe = document.getElementById("fullscreen-iframe");
@@ -269,14 +302,14 @@
         await fsContainer.msRequestFullscreen();
       }
     }
-
+    
     document.getElementById("exit-fullscreen").addEventListener("click", async function() {
       if (document.fullscreenElement) {
         await document.exitFullscreen();
       }
       document.getElementById("fullscreen-container").style.display = "none";
     });
-
+    
     function openFavoritesDB() {
       return new Promise((resolve, reject) => {
         const request = indexedDB.open("favoritesDB", 1);
@@ -288,7 +321,7 @@
         request.onerror = () => reject(request.error);
       });
     }
-
+    
     async function addFavorite(fav) {
       const db = await openFavoritesDB();
       return new Promise((resolve, reject) => {
@@ -299,7 +332,7 @@
         req.onerror = () => reject(req.error);
       });
     }
-
+    
     async function removeFavorite(favId) {
       const db = await openFavoritesDB();
       return new Promise((resolve, reject) => {
@@ -310,7 +343,7 @@
         req.onerror = () => reject(req.error);
       });
     }
-
+    
     async function getAllFavorites() {
       const db = await openFavoritesDB();
       return new Promise((resolve, reject) => {
@@ -321,7 +354,7 @@
         req.onerror = () => reject(req.error);
       });
     }
-
+    
     function createFavoriteIcon(favId, filePath, type, title) {
       const span = document.createElement("span");
       span.className = "fav-icon";
@@ -342,11 +375,11 @@
       });
       return span;
     }
-
+    
     const settingsButton = document.getElementById("settings-button");
     const settingsModal = document.getElementById("settings-modal");
     const closeModal = document.querySelector(".close-modal");
-
+    
     settingsButton.addEventListener("click", () => {
       settingsModal.style.display = "block";
     });
@@ -364,7 +397,7 @@
         localStorage.setItem("sortingOption", sortingOption);
       }
     });
-
+    
     document.getElementById("delete-all-data").addEventListener("click", async () => {
       if (confirm("Alle lokalen Daten (Favoriten, Einstellungen) wirklich löschen?")) {
         localStorage.removeItem("sortingOption");
@@ -373,7 +406,7 @@
         renderFavorites();
       }
     });
-
+    
     async function removeAllFavorites() {
       const db = await openFavoritesDB();
       return new Promise((resolve, reject) => {
