@@ -14,24 +14,23 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.0/jszip.min.js"></script>
 </head>
 <body>
-  <!-- Kein Header mehr, da der alte Text entfernt wurde -->
+  <!-- Der alte Header "Star-hub" wurde bereits entfernt -->
   <div class="container">
     <div class="content" id="main-content">
-      <!-- Upload-Bereich mit Drag & Drop -->
+      <!-- Upload-Bereich (nur beim ersten Upload sichtbar) -->
       <div id="upload-container">
         <h2>Willkommen bei Star-hub</h2>
         <p>Bitte wähle ein Gameplack (ZIP-Format) aus</p>
         <div id="drop-zone">ZIP- oder HTML-Datei hierher ziehen oder klicken</div>
       </div>
-      <!-- Unsichtbarer Datei-Input; nun akzeptiert ZIP und HTML -->
+      <!-- Unsichtbarer Datei-Input -->
       <input type="file" id="zip-input" accept=".zip,.html" style="display:none;">
       <!-- Einstellungen-Button -->
       <button id="settings-button">Einstellungen</button>
-      <!-- Hier werden die HTML-Dateien (und Favoriten) aufgelistet -->
+      <!-- Liste der Spiele/Favoriten -->
       <ul id="program-list"></ul>
-      <!-- Der Reupload-/Weiteres-Gamepack-Button bleibt sichtbar (dauerhaft) -->
-      <button id="reupload-button" style="display:block;">weiteres gamepack hinzufügen</button>
-      <!-- Audio-Player (wird nicht verwendet) -->
+      <!-- Neuer Drop-Bereich für weitere Uploads (immer sichtbar, unten) -->
+      <div id="reupload-zone">Weiteres Gamepack hinzufügen: ZIP- oder HTML-Datei hierher ziehen oder klicken</div>
       <audio id="audio-player" style="display:none;"></audio>
     </div>
     <footer id="folder-info">Star-tools a @wolfikuproduction | version : 2</footer>
@@ -74,17 +73,16 @@
   <script>
     /*
       Diese Version erlaubt den Upload von ZIP- und HTML-Dateien über Drag & Drop
-      oder per Klick. Nach dem ersten Upload (ZIP oder HTML) werden neue Dateien zu
-      den bereits vorhandenen Spielen hinzugefügt, ohne diese zu löschen.
-      Doppelte Dateinamen werden dedupliziert.
+      oder Klick. Beim ersten Upload wird der Upload-Bereich ausgeblendet, jedoch
+      bleibt am unteren Rand stets ein Reupload-Feld ("reupload-zone") sichtbar, über
+      das weitere Dateien hinzugefügt werden können. Doppelte Dateinamen werden entfernt.
       Favoriten, Einstellungen und der Fullscreen-Modus bleiben erhalten.
     */
     
-    let globalZip = null;           // Enthält das aktuell geladene ZIP (nur wenn eine ZIP hochgeladen wurde)
+    let globalZip = null;           // Enthält das aktuell geladene ZIP (falls vorhanden)
     let globalGameFiles = {};       // Sammlung aller HTML-Dateien (Key = Dateipfad)
     let globalFavorites = {};       // Favoriten aus IndexedDB
 
-    // Wrapper-Funktion: Verpackt ein ZIP-Dateiobjekt in ein fileHandle-ähnliches Objekt
     function wrapZipFile(zipFile) {
       return {
         getFile: async function() {
@@ -92,9 +90,8 @@
         }
       };
     }
-    
-    // Falls eine einzelne HTML-Datei hochgeladen wird, wird ein Dummy-Objekt erzeugt,
-    // das ähnlich wie ein JSZip-Objekt funktioniert.
+
+    // Falls eine einzelne HTML-Datei hochgeladen wird, wird ein Dummy-Objekt erzeugt.
     function wrapHTMLFile(file) {
       return {
         async async() {
@@ -102,36 +99,42 @@
         }
       };
     }
-    
+
     // Elemente abrufen
     const dropZone = document.getElementById("drop-zone");
     const zipInput = document.getElementById("zip-input");
-    const reuploadButton = document.getElementById("reupload-button");
+    const reuploadZone = document.getElementById("reupload-zone");
 
-    // Drag & Drop Events
-    dropZone.addEventListener("dragover", (e) => {
-      e.preventDefault();
-      dropZone.classList.add("dragover");
-    });
-    dropZone.addEventListener("dragleave", (e) => {
-      e.preventDefault();
-      dropZone.classList.remove("dragover");
-    });
-    dropZone.addEventListener("drop", async (e) => {
-      e.preventDefault();
-      dropZone.classList.remove("dragover");
-      const file = e.dataTransfer.files[0];
-      processFile(file);
-    });
-    dropZone.addEventListener("click", () => {
-      zipInput.click();
-    });
+    // Funktion, um Drop-Zonen-Listener zu binden
+    function attachDropZoneListeners(element) {
+      element.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        element.classList.add("dragover");
+      });
+      element.addEventListener("dragleave", (e) => {
+        e.preventDefault();
+        element.classList.remove("dragover");
+      });
+      element.addEventListener("drop", async (e) => {
+        e.preventDefault();
+        element.classList.remove("dragover");
+        const file = e.dataTransfer.files[0];
+        processFile(file);
+      });
+      element.addEventListener("click", () => {
+        zipInput.click();
+      });
+    }
+
+    // Binde Listener an den anfänglichen Drop-Bereich und an den Reupload-Bereich
+    attachDropZoneListeners(dropZone);
+    attachDropZoneListeners(reuploadZone);
+
     zipInput.addEventListener("change", async (e) => {
       const file = e.target.files[0];
       processFile(file);
     });
 
-    // Prozessiert eine Datei (ZIP oder HTML)
     async function processFile(file) {
       if (!file) return;
       const ext = file.name.toLowerCase().split('.').pop();
@@ -154,7 +157,7 @@
         alert("Fehler beim Laden der ZIP-Datei: " + e.message);
         return;
       }
-      // Integriere alle HTML-Dateien aus der ZIP in globalGameFiles
+      // Füge alle HTML-Dateien aus der ZIP zur globalen Sammlung hinzu
       for (const key in newZip.files) {
         if (!newZip.files[key].dir && key.toLowerCase().endsWith(".html")) {
           if (!(key in globalGameFiles)) {
@@ -162,37 +165,31 @@
           }
         }
       }
-      // Falls dies der erste Upload war, wird der Upload-Bereich ausgeblendet
+      // Falls dies der erste Upload ist, wird der Upload-Bereich ausgeblendet
       if(document.getElementById("upload-container").style.display !== "none"){
         document.getElementById("upload-container").style.display = "none";
       }
-      // Reupload-/Weiteres-Gamepack-Button bleibt immer sichtbar
-      reuploadButton.style.display = "block";
       document.getElementById("folder-info").textContent = "Star-tools a @wolfikuproduction | version : 2";
       await listHTMLFilesFromGlobalFiles();
     }
 
     // Verarbeitet eine einzelne HTML-Datei
     async function processHTMLFile(file) {
-      // Erstelle einen eindeutigen Schlüssel, z.B. "uploaded/Dateiname.html"
       let key = "uploaded/" + file.name;
-      // Falls der Schlüssel bereits existiert, hänge eine Zahl an
       let counter = 1;
       while(key in globalGameFiles) {
         key = "uploaded/" + counter + "_" + file.name;
         counter++;
       }
       globalGameFiles[key] = wrapHTMLFile(file);
-      // Falls der Upload-Bereich noch sichtbar ist (z.B. wenn noch nichts hochgeladen wurde), blende ihn aus
       if(document.getElementById("upload-container").style.display !== "none"){
         document.getElementById("upload-container").style.display = "none";
       }
-      reuploadButton.style.display = "block";
       document.getElementById("folder-info").textContent = "Star-tools a @wolfikuproduction | version : 2";
       await listHTMLFilesFromGlobalFiles();
     }
 
-    // Listet alle HTML-Dateien aus globalGameFiles auf (doppelte Titel werden entfernt)
+    // Listet alle HTML-Dateien aus der globalen Sammlung auf (Deduplizierung anhand des Titels)
     async function listHTMLFilesFromGlobalFiles() {
       const programListElem = document.getElementById("program-list");
       programListElem.innerHTML = "";
@@ -202,7 +199,7 @@
         const filename = key.split("/").pop().replace(/\.html$/i, "");
         files.push({ title: filename, filePath: key });
       }
-      // Dedupliziere Dateien anhand des Titels
+      // Dedupliziere basierend auf dem Titel
       let uniqueFiles = {};
       files.forEach(file => {
         if (!uniqueFiles[file.title]) {
