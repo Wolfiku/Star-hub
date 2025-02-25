@@ -121,6 +121,7 @@ footer {
   padding: 8px 16px;
   font-size: 1em;
   cursor: pointer;
+  z-index: 100;
 }
 
 /* Modal für Einstellungen */
