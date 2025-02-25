@@ -14,8 +14,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.0/jszip.min.js"></script>
 </head>
 <body>
-  <!-- Header "Star-hub" -->
-  <div id="main-header">Star-hub</div>
+  <!-- Der Header "Star-hub" wurde entfernt -->
   <div class="container">
     <div class="content" id="main-content">
       <!-- Upload-Bereich mit Drag & Drop -->
@@ -30,7 +29,8 @@
       <button id="settings-button">Einstellungen</button>
       <!-- Hier werden die HTML-Dateien (und Favoriten) aufgelistet -->
       <ul id="program-list"></ul>
-      <!-- (Audio-Player bleibt vorhanden, aber nicht sichtbar) -->
+      <!-- Reupload-Bereich: "weiteres gamepack hinzufügen" -->
+      <button id="reupload-button" style="display:none;">weiteres gamepack hinzufügen</button>
       <audio id="audio-player" style="display:none;"></audio>
     </div>
     <footer id="folder-info">Star-tools a @wolfikuproduction | version : 2</footer>
@@ -78,7 +78,7 @@
       Favoriten, Einstellungen und der Fullscreen-Modus bleiben erhalten.
     */
     
-    let globalZip = null;           // Wird beim ersten Upload initialisiert, neue Dateien werden hinzugefügt
+    let globalZip = null;           // Aktuell geladene ZIP-Datei (wird nicht zurückgesetzt)
     let globalGameFiles = {};       // Sammlung aller HTML-Dateien (Key = Dateipfad)
     let globalFavorites = {};       // Favoriten aus IndexedDB
 
@@ -93,25 +93,30 @@
     // Elemente abrufen
     const dropZone = document.getElementById("drop-zone");
     const zipInput = document.getElementById("zip-input");
+    const reuploadButton = document.getElementById("reupload-button");
 
     // Drag & Drop Events
     dropZone.addEventListener("dragover", (e) => {
       e.preventDefault();
       dropZone.classList.add("dragover");
     });
+
     dropZone.addEventListener("dragleave", (e) => {
       e.preventDefault();
       dropZone.classList.remove("dragover");
     });
+
     dropZone.addEventListener("drop", async (e) => {
       e.preventDefault();
       dropZone.classList.remove("dragover");
       const file = e.dataTransfer.files[0];
       processZipFile(file);
     });
+
     dropZone.addEventListener("click", () => {
       zipInput.click();
     });
+
     zipInput.addEventListener("change", async (e) => {
       const file = e.target.files[0];
       processZipFile(file);
@@ -127,7 +132,7 @@
         alert("Fehler beim Laden der ZIP-Datei: " + e.message);
         return;
       }
-      // Falls globalGameFiles bereits existieren, werden neue Dateien hinzugefügt
+      // Neue Dateien in globalGameFiles integrieren
       for (const key in newZip.files) {
         if (!newZip.files[key].dir && key.toLowerCase().endsWith(".html")) {
           if (!(key in globalGameFiles)) {
@@ -135,11 +140,16 @@
           }
         }
       }
-      // Falls dies der erste Upload ist, bleibt upload-container sichtbar (weil der Drop-Bereich immer aktiv ist)
+      // Falls erster Upload: Upload-Bereich ausblenden, Reupload-Button einblenden
+      if (document.getElementById("upload-container").style.display !== "none") {
+        document.getElementById("upload-container").style.display = "none";
+        reuploadButton.style.display = "block";
+        document.getElementById("folder-info").textContent = "Star-tools a @wolfikuproduction | version : 2";
+      }
       await listHTMLFilesFromGlobalFiles();
     }
 
-    // Listet alle HTML-Dateien aus globalGameFiles auf (dedupliziert nach Dateinamen)
+    // Listet alle HTML-Dateien aus globalGameFiles auf (doppelte Titel werden entfernt)
     async function listHTMLFilesFromGlobalFiles() {
       const programListElem = document.getElementById("program-list");
       programListElem.innerHTML = "";
@@ -149,7 +159,7 @@
         const filename = key.split("/").pop().replace(/\.html$/i, "");
         files.push({ title: filename, filePath: key });
       }
-      // Dedupliziere basierend auf dem Titel
+      // Dedupliziere Dateien anhand des Titels
       let uniqueFiles = {};
       files.forEach(file => {
         if (!uniqueFiles[file.title]) {
