@@ -10,12 +10,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Star-Hub – ZIP-Version</title>
   <link rel="stylesheet" href="styles.css">
-  <!-- JSZip zum Verarbeiten der ZIP-Datei -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.0/jszip.min.js"></script>
 </head>
 <body>
-  <!-- Header "Star-hub" -->
-  <div id="main-header">Star-hub</div>
   <div class="container">
     <div class="content" id="main-content">
       <!-- Upload-Bereich mit Drag & Drop -->
@@ -24,25 +21,21 @@
         <p>Bitte wähle ein Gameplack (ZIP-Format) aus</p>
         <div id="drop-zone">ZIP-Datei hierher ziehen oder klicken</div>
       </div>
-      <!-- Unsichtbarer Datei-Input -->
       <input type="file" id="zip-input" accept=".zip" style="display:none;">
-      <!-- Einstellungen-Button -->
       <button id="settings-button">Einstellungen</button>
-      <!-- Hier werden die HTML-Dateien (und Favoriten) aufgelistet -->
       <ul id="program-list"></ul>
-      <!-- (Audio-Player bleibt vorhanden, aber nicht sichtbar) -->
       <audio id="audio-player" style="display:none;"></audio>
     </div>
     <footer id="folder-info">Star-tools a @wolfikuproduction | version : 2</footer>
   </div>
-  
+
   <!-- Fullscreen-Container -->
   <div id="fullscreen-container">
     <iframe id="fullscreen-iframe"></iframe>
     <button id="exit-fullscreen">Stop</button>
   </div>
-  
-  <!-- Modal für Einstellungen (ohne Musiklautstärke) -->
+
+  <!-- Modal für Einstellungen -->
   <div id="settings-modal">
     <div class="modal-content">
       <span class="close-modal">&times;</span>
@@ -59,8 +52,7 @@
       </div>
     </div>
   </div>
-  
-  <!-- Service Worker Registrierung -->
+
   <script>
     if ("serviceWorker" in navigator) {
       navigator.serviceWorker.register("service-worker.js")
@@ -68,19 +60,10 @@
           .catch((err) => console.log("Service Worker Fehler:", err));
     }
   </script>
-  
-  <!-- Haupt-Script -->
+
   <script>
-    /*
-      Diese Version verwendet ein dauerhaft sichtbares Drag & Drop-Feld für den ZIP-Upload.
-      Neue ZIP-Dateien werden in die bestehende Sammlung integriert, sodass neue Spiele
-      einfach zu den bereits vorhandenen hinzugefügt werden. Doppelte Dateinamen werden dedupliziert.
-      Favoriten, Einstellungen und der Fullscreen-Modus bleiben erhalten.
-    */
-    
-    let globalZip = null;           // Wird beim ersten Upload initialisiert, neue Dateien werden hinzugefügt
-    let globalGameFiles = {};       // Sammlung aller HTML-Dateien (Key = Dateipfad)
-    let globalFavorites = {};       // Favoriten aus IndexedDB
+    let globalGameFiles = {};  
+    let globalFavorites = {};  
 
     function wrapZipFile(zipFile) {
       return {
@@ -90,11 +73,9 @@
       };
     }
 
-    // Elemente abrufen
     const dropZone = document.getElementById("drop-zone");
     const zipInput = document.getElementById("zip-input");
 
-    // Drag & Drop Events
     dropZone.addEventListener("dragover", (e) => {
       e.preventDefault();
       dropZone.classList.add("dragover");
@@ -127,7 +108,6 @@
         alert("Fehler beim Laden der ZIP-Datei: " + e.message);
         return;
       }
-      // Falls globalGameFiles bereits existieren, werden neue Dateien hinzugefügt
       for (const key in newZip.files) {
         if (!newZip.files[key].dir && key.toLowerCase().endsWith(".html")) {
           if (!(key in globalGameFiles)) {
@@ -135,11 +115,9 @@
           }
         }
       }
-      // Falls dies der erste Upload ist, bleibt upload-container sichtbar (weil der Drop-Bereich immer aktiv ist)
       await listHTMLFilesFromGlobalFiles();
     }
 
-    // Listet alle HTML-Dateien aus globalGameFiles auf (dedupliziert nach Dateinamen)
     async function listHTMLFilesFromGlobalFiles() {
       const programListElem = document.getElementById("program-list");
       programListElem.innerHTML = "";
@@ -149,7 +127,6 @@
         const filename = key.split("/").pop().replace(/\.html$/i, "");
         files.push({ title: filename, filePath: key });
       }
-      // Dedupliziere basierend auf dem Titel
       let uniqueFiles = {};
       files.forEach(file => {
         if (!uniqueFiles[file.title]) {
@@ -160,11 +137,9 @@
       if (sortingOption === "alphabetical") {
         files.sort((a, b) => a.title.localeCompare(b.title));
       }
-      
       const favorites = await getAllFavorites();
       globalFavorites = {};
       favorites.forEach(fav => globalFavorites[fav.id] = fav);
-      
       if (favorites.length > 0) {
         const favHeader = document.createElement("li");
         favHeader.textContent = "Favoriten";
@@ -174,7 +149,6 @@
           createProgramListItem(fav.title, fav.filePath, true);
         });
       }
-      
       files.forEach(file => {
         if (!globalFavorites["file_" + file.title]) {
           createProgramListItem(file.title, file.filePath, false);
@@ -209,10 +183,6 @@
       fsContainer.style.display = "block";
       if (fsContainer.requestFullscreen) {
         await fsContainer.requestFullscreen();
-      } else if (fsContainer.webkitRequestFullscreen) {
-        await fsContainer.webkitRequestFullscreen();
-      } else if (fsContainer.msRequestFullscreen) {
-        await fsContainer.msRequestFullscreen();
       }
     }
 
@@ -223,121 +193,13 @@
       document.getElementById("fullscreen-container").style.display = "none";
     });
 
-    function openFavoritesDB() {
-      return new Promise((resolve, reject) => {
-        const request = indexedDB.open("favoritesDB", 1);
-        request.onupgradeneeded = () => {
-          const db = request.result;
-          db.createObjectStore("favorites", { keyPath: "id" });
-        };
-        request.onsuccess = () => resolve(request.result);
-        request.onerror = () => reject(request.error);
-      });
-    }
-
-    async function addFavorite(fav) {
-      const db = await openFavoritesDB();
-      return new Promise((resolve, reject) => {
-        const tx = db.transaction("favorites", "readwrite");
-        const store = tx.objectStore("favorites");
-        const req = store.put(fav);
-        req.onsuccess = () => resolve();
-        req.onerror = () => reject(req.error);
-      });
-    }
-
-    async function removeFavorite(favId) {
-      const db = await openFavoritesDB();
-      return new Promise((resolve, reject) => {
-        const tx = db.transaction("favorites", "readwrite");
-        const store = tx.objectStore("favorites");
-        const req = store.delete(favId);
-        req.onsuccess = () => resolve();
-        req.onerror = () => reject(req.error);
-      });
-    }
-
-    async function getAllFavorites() {
-      const db = await openFavoritesDB();
-      return new Promise((resolve, reject) => {
-        const tx = db.transaction("favorites", "readonly");
-        const store = tx.objectStore("favorites");
-        const req = store.getAll();
-        req.onsuccess = (event) => resolve(event.target.result);
-        req.onerror = () => reject(req.error);
-      });
-    }
-
-    function createFavoriteIcon(favId, filePath, type, title) {
-      const span = document.createElement("span");
-      span.className = "fav-icon";
-      span.textContent = globalFavorites[favId] ? "★" : "☆";
-      span.addEventListener("click", async (e) => {
-        e.stopPropagation();
-        const fav = await getFavorite(favId);
-        if (fav) {
-          await removeFavorite(favId);
-          delete globalFavorites[favId];
-          span.textContent = "☆";
-        } else {
-          await addFavorite({ id: favId, title, filePath });
-          globalFavorites[favId] = { id: favId, title, filePath };
-          span.textContent = "★";
-        }
-        await renderFavorites();
-      });
-      return span;
-    }
-
-    const settingsButton = document.getElementById("settings-button");
-    const settingsModal = document.getElementById("settings-modal");
-    const closeModal = document.querySelector(".close-modal");
-
-    settingsButton.addEventListener("click", () => {
-      settingsModal.style.display = "block";
-    });
-    if (closeModal) {
-      closeModal.addEventListener("click", () => {
-        settingsModal.style.display = "none";
-        const sortingOption = document.getElementById("sorting-option").value;
-        localStorage.setItem("sortingOption", sortingOption);
-      });
-    }
-    window.addEventListener("click", (e) => {
-      if (e.target === settingsModal) {
-        settingsModal.style.display = "none";
-        const sortingOption = document.getElementById("sorting-option").value;
-        localStorage.setItem("sortingOption", sortingOption);
-      }
-    });
-
     document.getElementById("delete-all-data").addEventListener("click", async () => {
-      if (confirm("Alle lokalen Daten (Favoriten, Einstellungen) wirklich löschen?")) {
-        localStorage.removeItem("sortingOption");
-        await removeAllFavorites();
+      if (confirm("Alle lokalen Daten wirklich löschen?")) {
+        localStorage.clear();
         alert("Alle Daten wurden gelöscht.");
-        renderFavorites();
       }
     });
 
-    async function removeAllFavorites() {
-      const db = await openFavoritesDB();
-      return new Promise((resolve, reject) => {
-        const tx = db.transaction("favorites", "readwrite");
-        const store = tx.objectStore("favorites");
-        const req = store.clear();
-        req.onsuccess = () => resolve();
-        req.onerror = () => reject(req.error);
-      });
-    }
-  </script>
-  
-  <script>
-    if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.register("service-worker.js")
-          .then(() => console.log("Service Worker registriert"))
-          .catch((err) => console.log("Service Worker Fehler:", err));
-    }
   </script>
 </body>
 </html>
