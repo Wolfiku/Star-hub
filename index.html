@@ -5,27 +5,28 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Easy HTML – Version 3</title>
 
-<!-- JSZip -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.0/jszip.min.js"></script>
 
 <style>
 :root {
-  --bg: #0f1115;
-  --card: #1a1d24;
-  --accent: #4da3ff;
-  --text: #ffffff;
-  --sub: #9aa4b2;
+  --bg: #f5f5f7;
+  --card: #ffffff;
+  --border: #e5e5ea;
+  --text: #1d1d1f;
+  --sub: #6e6e73;
+  --accent: #0071e3;
+  --danger: #ff3b30;
 }
 
 * {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
-  font-family: system-ui, -apple-system, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
 }
 
 body {
-  background: linear-gradient(145deg, #0f1115, #181c25);
+  background: var(--bg);
   color: var(--text);
   min-height: 100vh;
   display: flex;
@@ -33,88 +34,80 @@ body {
 }
 
 header {
-  padding: 25px;
+  padding: 40px 20px 20px;
   text-align: center;
-  font-size: 28px;
-  font-weight: 700;
-  letter-spacing: 1px;
+  font-size: 32px;
+  font-weight: 600;
+  letter-spacing: -0.5px;
 }
 
 .container {
   flex: 1;
-  padding: 30px;
-  max-width: 1100px;
-  margin: auto;
+  max-width: 800px;
   width: 100%;
+  margin: auto;
+  padding: 20px;
 }
 
+/* Upload Feld */
+
 .upload-box {
-  border: 2px dashed var(--accent);
-  border-radius: 16px;
-  padding: 50px;
+  border: 2px dashed var(--border);
+  background: var(--card);
+  border-radius: 18px;
+  padding: 60px 20px;
   text-align: center;
   cursor: pointer;
-  transition: 0.3s;
-  background: var(--card);
+  transition: 0.2s ease;
 }
 
 .upload-box:hover {
-  background: #222633;
+  border-color: var(--accent);
 }
 
 .upload-box.dragover {
-  background: #273042;
+  border-color: var(--accent);
+  background: #f0f8ff;
 }
 
 .upload-box h2 {
-  margin-bottom: 10px;
+  font-size: 20px;
+  margin-bottom: 8px;
 }
 
 .upload-box p {
+  font-size: 14px;
   color: var(--sub);
 }
 
-.grid {
+/* Liste */
+
+.list {
   margin-top: 30px;
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  gap: 20px;
+  list-style: none;
 }
 
-.card {
+.list li {
   background: var(--card);
-  padding: 20px;
+  border: 1px solid var(--border);
+  padding: 16px 18px;
   border-radius: 14px;
-  text-align: center;
+  margin-bottom: 12px;
   cursor: pointer;
-  transition: 0.2s;
-  border: 1px solid transparent;
+  transition: 0.15s ease;
 }
 
-.card:hover {
-  transform: translateY(-4px);
-  border: 1px solid var(--accent);
+.list li:hover {
+  border-color: var(--accent);
+  background: #fafafa;
 }
 
-.card span {
-  display: block;
-  margin-top: 10px;
-  font-size: 14px;
-  color: var(--sub);
-}
-
-footer {
-  padding: 15px;
-  text-align: center;
-  font-size: 14px;
-  color: var(--sub);
-  border-top: 1px solid #222;
-}
+/* Viewer */
 
 #viewer {
   position: fixed;
   inset: 0;
-  background: black;
+  background: #000;
   display: none;
 }
 
@@ -124,16 +117,29 @@ footer {
   border: none;
 }
 
+/* Close Button */
+
 #closeViewer {
   position: absolute;
-  top: 15px;
-  right: 15px;
-  background: var(--accent);
+  bottom: 20px;
+  right: 20px;
+  background: var(--danger);
+  color: white;
   border: none;
-  padding: 8px 14px;
-  border-radius: 8px;
+  padding: 10px 16px;
+  border-radius: 20px;
+  font-size: 14px;
   cursor: pointer;
-  font-weight: 600;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+
+/* Footer */
+
+footer {
+  padding: 20px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--sub);
 }
 </style>
 </head>
@@ -142,6 +148,7 @@ footer {
 <header>Easy HTML</header>
 
 <div class="container">
+
   <div class="upload-box" id="dropZone">
     <h2>Datei hochladen</h2>
     <p>HTML oder ZIP hierher ziehen oder klicken</p>
@@ -149,14 +156,15 @@ footer {
 
   <input type="file" id="fileInput" accept=".html,.zip" hidden>
 
-  <div class="grid" id="fileGrid"></div>
+  <ul class="list" id="fileList"></ul>
+
 </div>
 
 <footer>Easy HTML – Version 3</footer>
 
 <div id="viewer">
-  <button id="closeViewer">Schließen</button>
   <iframe id="viewerFrame"></iframe>
+  <button id="closeViewer">Schließen</button>
 </div>
 
 <script>
@@ -168,33 +176,35 @@ const state = {
 
 const dropZone = document.getElementById("dropZone");
 const fileInput = document.getElementById("fileInput");
-const fileGrid = document.getElementById("fileGrid");
+const fileList = document.getElementById("fileList");
 const viewer = document.getElementById("viewer");
 const viewerFrame = document.getElementById("viewerFrame");
 const closeViewer = document.getElementById("closeViewer");
 
-function bindUploadEvents() {
-  dropZone.addEventListener("click", () => fileInput.click());
+/* Upload Events */
 
-  dropZone.addEventListener("dragover", e => {
-    e.preventDefault();
-    dropZone.classList.add("dragover");
-  });
+dropZone.addEventListener("click", () => fileInput.click());
 
-  dropZone.addEventListener("dragleave", () => {
-    dropZone.classList.remove("dragover");
-  });
+dropZone.addEventListener("dragover", e => {
+  e.preventDefault();
+  dropZone.classList.add("dragover");
+});
 
-  dropZone.addEventListener("drop", e => {
-    e.preventDefault();
-    dropZone.classList.remove("dragover");
-    handleFile(e.dataTransfer.files[0]);
-  });
+dropZone.addEventListener("dragleave", () => {
+  dropZone.classList.remove("dragover");
+});
 
-  fileInput.addEventListener("change", e => {
-    handleFile(e.target.files[0]);
-  });
-}
+dropZone.addEventListener("drop", e => {
+  e.preventDefault();
+  dropZone.classList.remove("dragover");
+  handleFile(e.dataTransfer.files[0]);
+});
+
+fileInput.addEventListener("change", e => {
+  handleFile(e.target.files[0]);
+});
+
+/* Datei Verarbeitung */
 
 async function handleFile(file) {
   if (!file) return;
@@ -202,7 +212,7 @@ async function handleFile(file) {
   const ext = file.name.split(".").pop().toLowerCase();
 
   if (ext === "html") {
-    addHTMLFile(file.name.replace(".html", ""), {
+    addFile(file.name.replace(".html", ""), {
       async async() { return file; }
     });
   }
@@ -213,46 +223,44 @@ async function handleFile(file) {
       const entry = zip.files[key];
       if (!entry.dir && key.toLowerCase().endsWith(".html")) {
         const title = key.split("/").pop().replace(".html", "");
-        addHTMLFile(title, entry);
+        addFile(title, entry);
       }
     }
   }
 
-  renderFiles();
+  renderList();
 }
 
-function addHTMLFile(title, fileObj) {
+function addFile(title, fileObj) {
   state.files[title] = fileObj;
 }
 
-function renderFiles() {
-  fileGrid.innerHTML = "";
+/* Rendering */
+
+function renderList() {
+  fileList.innerHTML = "";
 
   Object.keys(state.files).forEach(title => {
-    const card = document.createElement("div");
-    card.className = "card";
-    card.innerHTML = `
-      <strong>${title}</strong>
-      <span>HTML Datei</span>
-    `;
+    const li = document.createElement("li");
+    li.textContent = title;
 
-    card.onclick = async () => {
+    li.onclick = async () => {
       const blob = await state.files[title].async("blob");
       const url = URL.createObjectURL(blob);
       viewerFrame.src = url;
       viewer.style.display = "block";
     };
 
-    fileGrid.appendChild(card);
+    fileList.appendChild(li);
   });
 }
+
+/* Viewer schließen */
 
 closeViewer.addEventListener("click", () => {
   viewer.style.display = "none";
   viewerFrame.src = "";
 });
-
-bindUploadEvents();
 </script>
 
 </body>
