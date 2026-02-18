@@ -54,7 +54,6 @@ header {
   letter-spacing: -0.5px;
 }
 
-/* Container */
 .container {
   flex: 1;
   max-width: 800px;
@@ -114,12 +113,42 @@ header {
   opacity: 0;
   transform: translateX(-20px);
   animation: listItemIn 0.5s forwards;
+  position: relative;
 }
 
-.list li:hover {
-  border-color: var(--accent);
-  background: #fafafa44;
-  transform: translateX(5px);
+/* Vorschau-Button */
+.preview-btn {
+  position: absolute;
+  right: 16px;
+  top: 16px;
+  background: var(--accent);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  padding: 3px 8px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.preview-btn:hover {
+  transform: scale(1.1);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+
+/* Code Preview */
+.code-preview {
+  margin-top: 8px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px;
+  font-family: monospace;
+  font-size: 13px;
+  max-height: 150px;
+  overflow: auto;
+  white-space: pre-wrap;
+  display: none;
 }
 
 /* Viewer */
@@ -131,6 +160,7 @@ header {
   opacity: 0;
   transform: scale(0.95);
   transition: opacity 0.3s ease, transform 0.3s ease;
+  z-index: 10;
 }
 
 #viewer.show {
@@ -175,20 +205,68 @@ footer {
   color: var(--sub);
 }
 
+/* Live Editor Button unten rechts */
+#liveBtn {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background: var(--accent);
+  color: white;
+  border: none;
+  padding: 12px 16px;
+  border-radius: 20px;
+  cursor: pointer;
+  z-index: 15;
+  font-size: 14px;
+  transition: transform 0.2s ease;
+}
+
+#liveBtn:hover { transform: scale(1.1); }
+
+#liveEditor {
+  position: fixed;
+  bottom: 70px;
+  right: 20px;
+  width: 400px;
+  max-width: 90vw;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 10px;
+  display: none;
+  flex-direction: column;
+  z-index: 15;
+}
+
+#liveEditor textarea {
+  width: 100%;
+  height: 150px;
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-family: monospace;
+  padding: 8px;
+  resize: vertical;
+}
+
+#runBtn {
+  margin-top: 8px;
+  background: var(--accent);
+  color: white;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 12px;
+  cursor: pointer;
+  align-self: flex-end;
+}
+
+#runBtn:hover { transform: scale(1.05); }
+  
 /* Animationen */
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-@keyframes pulse {
-  0%, 100% { box-shadow: 0 0 0 rgba(0,0,0,0.15); }
-  50% { box-shadow: 0 0 20px rgba(0,0,0,0.25); }
-}
-
-@keyframes listItemIn {
-  to { opacity: 1; transform: translateX(0); }
-}
+@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes pulse { 0%,100%{box-shadow:0 0 0 rgba(0,0,0,0.15);} 50%{box-shadow:0 0 20px rgba(0,0,0,0.25);} }
+@keyframes listItemIn { to{opacity:1; transform:translateX(0);} }
 </style>
 </head>
 <body>
@@ -196,7 +274,6 @@ footer {
 <header>Easy HTML</header>
 
 <div class="container">
-
   <div class="upload-box" id="dropZone">
     <h2>Datei hochladen</h2>
     <p>HTML oder ZIP hierher ziehen oder klicken</p>
@@ -205,21 +282,27 @@ footer {
   <input type="file" id="fileInput" accept=".html,.zip" hidden>
 
   <ul class="list" id="fileList"></ul>
-
 </div>
 
 <footer>Easy HTML – Version 3</footer>
 
+<!-- Viewer -->
 <div id="viewer">
   <iframe id="viewerFrame"></iframe>
   <button id="closeViewer">Schließen</button>
+</div>
+
+<!-- Live Code Editor -->
+<button id="liveBtn">Live Code</button>
+<div id="liveEditor">
+  <textarea id="liveCode" placeholder="HTML hier eingeben..."></textarea>
+  <button id="runBtn">Run</button>
 </div>
 
 <script>
 "use strict";
 
 const state = { files: {} };
-
 const dropZone = document.getElementById("dropZone");
 const fileInput = document.getElementById("fileInput");
 const fileList = document.getElementById("fileList");
@@ -227,12 +310,14 @@ const viewer = document.getElementById("viewer");
 const viewerFrame = document.getElementById("viewerFrame");
 const closeViewer = document.getElementById("closeViewer");
 
+const liveBtn = document.getElementById("liveBtn");
+const liveEditor = document.getElementById("liveEditor");
+const liveCode = document.getElementById("liveCode");
+const runBtn = document.getElementById("runBtn");
+
 /* Dark/Light Mode dynamisch */
 const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-function updateTheme(e) {
-  if(e.matches) document.body.classList.add('dark');
-  else document.body.classList.remove('dark');
-}
+function updateTheme(e){ if(e.matches) document.body.classList.add('dark'); else document.body.classList.remove('dark'); }
 mediaQuery.addEventListener('change', updateTheme);
 updateTheme(mediaQuery);
 
@@ -244,39 +329,44 @@ dropZone.addEventListener("drop", e => { e.preventDefault(); dropZone.classList.
 fileInput.addEventListener("change", e => handleFile(e.target.files[0]));
 
 /* Datei Verarbeitung */
-async function handleFile(file) {
-  if (!file) return;
+async function handleFile(file){
+  if(!file) return;
   const ext = file.name.split(".").pop().toLowerCase();
-
-  if (ext === "html") {
-    addFile(file.name.replace(".html", ""), { async async() { return file; } });
-  }
-
-  if (ext === "zip") {
-    const zip = await JSZip.loadAsync(file);
-    for (const key in zip.files) {
-      const entry = zip.files[key];
-      if (!entry.dir && key.toLowerCase().endsWith(".html")) {
-        const title = key.split("/").pop().replace(".html", "");
-        addFile(title, entry);
-      }
-    }
-  }
-
+  if(ext==="html"){ addFile(file.name.replace(".html",""), { async async(){return file;} }); }
+  if(ext==="zip"){ const zip = await JSZip.loadAsync(file); for(const key in zip.files){ const entry=zip.files[key]; if(!entry.dir && key.toLowerCase().endsWith(".html")){ addFile(key.split("/").pop().replace(".html",""), entry); } } }
   renderList();
 }
 
-function addFile(title, fileObj) { state.files[title] = fileObj; }
+function addFile(title,fileObj){ state.files[title]=fileObj; }
 
 /* Rendering */
-function renderList() {
-  fileList.innerHTML = "";
-  Object.keys(state.files).forEach((title, index) => {
-    const li = document.createElement("li");
-    li.textContent = title;
-    li.style.animationDelay = `${index * 0.1}s`; // leichte Stagger-Animation
+function renderList(){
+  fileList.innerHTML="";
+  Object.keys(state.files).forEach((title,index)=>{
+    const li=document.createElement("li");
+    li.textContent=title;
+    li.style.animationDelay=`${index*0.1}s`;
 
-    li.onclick = async () => {
+    // Preview Button
+    const btn = document.createElement("button");
+    btn.textContent="Preview";
+    btn.className="preview-btn";
+    li.appendChild(btn);
+
+    // Code Preview
+    const codeDiv = document.createElement("div");
+    codeDiv.className="code-preview";
+    li.appendChild(codeDiv);
+
+    btn.onclick=async(e)=>{
+      e.stopPropagation();
+      const blob = await state.files[title].async("blob");
+      const text = await blob.text();
+      codeDiv.textContent = text;
+      codeDiv.style.display = codeDiv.style.display==="block"?"none":"block";
+    };
+
+    li.onclick=async()=>{
       const blob = await state.files[title].async("blob");
       const url = URL.createObjectURL(blob);
       viewerFrame.src = url;
@@ -288,9 +378,18 @@ function renderList() {
 }
 
 /* Viewer schließen */
-closeViewer.addEventListener("click", () => {
+closeViewer.addEventListener("click",()=>{
   viewer.classList.remove('show');
-  setTimeout(() => { viewerFrame.src = ""; }, 300);
+  setTimeout(()=>{ viewerFrame.src=""; },300);
+});
+
+/* Live Editor */
+liveBtn.addEventListener("click",()=>{ liveEditor.style.display = liveEditor.style.display==="flex"?"none":"flex"; });
+runBtn.addEventListener("click",()=>{
+  const blob = new Blob([liveCode.value],{type:"text/html"});
+  const url = URL.createObjectURL(blob);
+  viewerFrame.src = url;
+  viewer.classList.add('show');
 });
 </script>
 
