@@ -5,10 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Easy HTML – Version 3</title>
 
-<!-- JSZip -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.0/jszip.min.js"></script>
-
-<!-- Marked (Markdown Parser) -->
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 
 <style>
@@ -37,8 +34,8 @@
   box-sizing: border-box;
   margin: 0;
   padding: 0;
-  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
-  transition: background 0.25s ease, border 0.25s ease, color 0.25s ease;
+  font-family: -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  transition: all 0.25s ease;
 }
 
 body {
@@ -54,14 +51,11 @@ header {
   text-align: center;
   font-size: 32px;
   font-weight: 600;
-  letter-spacing: -0.5px;
-  animation: fadeDown 0.6s ease;
 }
 
 .container {
   flex: 1;
   max-width: 800px;
-  width: 100%;
   margin: auto;
   padding: 20px;
 }
@@ -75,24 +69,16 @@ header {
   padding: 60px 20px;
   text-align: center;
   cursor: pointer;
-  transition: all 0.25s ease;
-  animation: fadeUp 0.6s ease;
 }
 
 .upload-box:hover {
-  transform: scale(1.02);
   border-color: var(--accent);
+  transform: scale(1.02);
 }
 
 .upload-box.dragover {
   border-color: var(--accent);
   background: rgba(0,122,255,0.08);
-}
-
-.upload-box.hidden {
-  opacity: 0;
-  transform: scale(0.95);
-  pointer-events: none;
 }
 
 /* Liste */
@@ -109,8 +95,8 @@ header {
   border-radius: 14px;
   margin-bottom: 12px;
   cursor: pointer;
-  transform: translateY(10px);
   opacity: 0;
+  transform: translateY(10px);
   animation: listIn 0.4s forwards;
 }
 
@@ -119,26 +105,35 @@ header {
   border-color: var(--accent);
 }
 
-/* Viewer */
+/* Fullscreen Viewer */
 
 #viewer {
   position: fixed;
   inset: 0;
-  background: var(--bg);
+  background: #000;
   display: none;
-  animation: fadeIn 0.3s ease;
 }
 
-#viewerContent {
+#viewer iframe {
   width: 100%;
   height: 100%;
+  border: none;
+}
+
+/* Markdown Viewer */
+
+#mdViewer {
+  position: fixed;
+  inset: 0;
+  background: var(--bg);
+  display: none;
   overflow: auto;
   padding: 40px;
 }
 
 /* Close Button */
 
-#closeViewer {
+.closeBtn {
   position: fixed;
   bottom: 20px;
   right: 20px;
@@ -150,41 +145,23 @@ header {
   font-size: 14px;
   cursor: pointer;
   box-shadow: 0 6px 18px rgba(0,0,0,0.3);
-  transition: transform 0.2s ease;
 }
 
-#closeViewer:hover {
+.closeBtn:hover {
   transform: scale(1.1);
 }
 
-/* Footer */
+/* Animation */
+
+@keyframes listIn {
+  to { opacity: 1; transform: translateY(0); }
+}
 
 footer {
   padding: 20px;
   text-align: center;
   font-size: 13px;
   color: var(--sub);
-}
-
-/* Animations */
-
-@keyframes fadeDown {
-  from {opacity:0; transform: translateY(-20px);}
-  to {opacity:1; transform: translateY(0);}
-}
-
-@keyframes fadeUp {
-  from {opacity:0; transform: translateY(20px);}
-  to {opacity:1; transform: translateY(0);}
-}
-
-@keyframes fadeIn {
-  from {opacity:0;}
-  to {opacity:1;}
-}
-
-@keyframes listIn {
-  to {opacity:1; transform: translateY(0);}
 }
 </style>
 </head>
@@ -207,9 +184,16 @@ footer {
 
 <footer>Easy HTML – Version 3</footer>
 
+<!-- HTML Fullscreen -->
 <div id="viewer">
-  <div id="viewerContent"></div>
-  <button id="closeViewer">Schließen</button>
+  <iframe id="viewerFrame"></iframe>
+  <button class="closeBtn" id="closeHtml">Schließen</button>
+</div>
+
+<!-- Markdown Viewer -->
+<div id="mdViewer">
+  <div id="mdContent" style="max-width:800px;margin:auto;"></div>
+  <button class="closeBtn" id="closeMd">Schließen</button>
 </div>
 
 <script>
@@ -220,11 +204,16 @@ const state = { files: {} };
 const dropZone = document.getElementById("dropZone");
 const fileInput = document.getElementById("fileInput");
 const fileList = document.getElementById("fileList");
-const viewer = document.getElementById("viewer");
-const viewerContent = document.getElementById("viewerContent");
-const closeViewer = document.getElementById("closeViewer");
 
-/* Upload Events */
+const viewer = document.getElementById("viewer");
+const viewerFrame = document.getElementById("viewerFrame");
+const closeHtml = document.getElementById("closeHtml");
+
+const mdViewer = document.getElementById("mdViewer");
+const mdContent = document.getElementById("mdContent");
+const closeMd = document.getElementById("closeMd");
+
+/* Upload */
 
 dropZone.addEventListener("click", () => fileInput.click());
 
@@ -263,14 +252,13 @@ async function handleFile(file) {
     for (const key in zip.files) {
       const entry = zip.files[key];
       if (!entry.dir && (key.endsWith(".html") || key.endsWith(".md"))) {
-        const title = key.split("/").pop().replace(/\.(html|md)$/i, "");
         const blob = await entry.async("blob");
+        const title = key.split("/").pop().replace(/\.(html|md)$/i, "");
         addFile(title, blob, key.endsWith(".md") ? "md" : "html");
       }
     }
   }
 
-  dropZone.classList.add("hidden");
   renderList();
 }
 
@@ -287,12 +275,12 @@ function renderList() {
     const li = document.createElement("li");
     li.textContent = title;
     li.style.animationDelay = `${index * 0.05}s`;
-
     li.onclick = () => openFile(title);
-
     fileList.appendChild(li);
   });
 }
+
+/* Öffnen */
 
 async function openFile(title) {
   const item = state.files[title];
@@ -300,21 +288,34 @@ async function openFile(title) {
   if (item.type === "html") {
     const blob = item.file instanceof Blob ? item.file : await item.file;
     const url = URL.createObjectURL(blob);
-    viewerContent.innerHTML = `<iframe src="${url}" style="width:100%;height:100%;border:none;"></iframe>`;
+    viewerFrame.src = url;
+    viewer.style.display = "block";
+
+    if (viewer.requestFullscreen) {
+      viewer.requestFullscreen();
+    }
   }
 
   if (item.type === "md") {
     const text = await item.file.text();
-    const html = marked.parse(text);
-    viewerContent.innerHTML = `<div style="max-width:800px;margin:auto;">${html}</div>`;
+    mdContent.innerHTML = marked.parse(text);
+    mdViewer.style.display = "block";
   }
-
-  viewer.style.display = "block";
 }
 
-closeViewer.addEventListener("click", () => {
+/* Schließen */
+
+closeHtml.addEventListener("click", async () => {
+  if (document.fullscreenElement) {
+    await document.exitFullscreen();
+  }
   viewer.style.display = "none";
-  viewerContent.innerHTML = "";
+  viewerFrame.src = "";
+});
+
+closeMd.addEventListener("click", () => {
+  mdViewer.style.display = "none";
+  mdContent.innerHTML = "";
 });
 </script>
 
