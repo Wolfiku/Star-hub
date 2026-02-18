@@ -1,5 +1,5 @@
 # Easy HTML Reader
-
+@wolfikuproduction
 ## Beschreibung
 
 **Easy HTML Reader** ist ein minimalistischer, moderner HTML-Dateibetrachter, der speziell für **iPads** und Touch-Geräte optimiert ist. Er erlaubt es dir, HTML-Dateien oder ZIP-Archive direkt im Browser zu öffnen und den Inhalt zu betrachten, ohne zusätzliche Software installieren zu müssen.  
