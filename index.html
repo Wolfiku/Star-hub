@@ -6,12 +6,11 @@
 <title>Easy HTML – Version 3</title>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.0/jszip.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 
 <style>
 :root {
-  --bg: #ffffff;
-  --card: #f2f2f7;
+  --bg: #f5f5f7;
+  --card: #ffffff;
   --border: #e5e5ea;
   --text: #1d1d1f;
   --sub: #6e6e73;
@@ -19,23 +18,11 @@
   --danger: #ff3b30;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #000000;
-    --card: #1c1c1e;
-    --border: #2c2c2e;
-    --text: #ffffff;
-    --sub: #8e8e93;
-    --accent: #0a84ff;
-  }
-}
-
 * {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
-  font-family: -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
-  transition: all 0.25s ease;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
 }
 
 body {
@@ -51,16 +38,18 @@ header {
   text-align: center;
   font-size: 32px;
   font-weight: 600;
+  letter-spacing: -0.5px;
 }
 
 .container {
   flex: 1;
   max-width: 800px;
+  width: 100%;
   margin: auto;
   padding: 20px;
 }
 
-/* Upload */
+/* Upload Feld */
 
 .upload-box {
   border: 2px dashed var(--border);
@@ -69,16 +58,26 @@ header {
   padding: 60px 20px;
   text-align: center;
   cursor: pointer;
+  transition: 0.2s ease;
 }
 
 .upload-box:hover {
   border-color: var(--accent);
-  transform: scale(1.02);
 }
 
 .upload-box.dragover {
   border-color: var(--accent);
-  background: rgba(0,122,255,0.08);
+  background: #f0f8ff;
+}
+
+.upload-box h2 {
+  font-size: 20px;
+  margin-bottom: 8px;
+}
+
+.upload-box p {
+  font-size: 14px;
+  color: var(--sub);
 }
 
 /* Liste */
@@ -95,17 +94,15 @@ header {
   border-radius: 14px;
   margin-bottom: 12px;
   cursor: pointer;
-  opacity: 0;
-  transform: translateY(10px);
-  animation: listIn 0.4s forwards;
+  transition: 0.15s ease;
 }
 
 .list li:hover {
-  transform: translateY(-3px);
   border-color: var(--accent);
+  background: #fafafa;
 }
 
-/* Fullscreen Viewer */
+/* Viewer */
 
 #viewer {
   position: fixed;
@@ -120,42 +117,23 @@ header {
   border: none;
 }
 
-/* Markdown Viewer */
-
-#mdViewer {
-  position: fixed;
-  inset: 0;
-  background: var(--bg);
-  display: none;
-  overflow: auto;
-  padding: 40px;
-}
-
 /* Close Button */
 
-.closeBtn {
-  position: fixed;
+#closeViewer {
+  position: absolute;
   bottom: 20px;
   right: 20px;
   background: var(--danger);
   color: white;
   border: none;
-  padding: 12px 18px;
-  border-radius: 25px;
+  padding: 10px 16px;
+  border-radius: 20px;
   font-size: 14px;
   cursor: pointer;
-  box-shadow: 0 6px 18px rgba(0,0,0,0.3);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
 }
 
-.closeBtn:hover {
-  transform: scale(1.1);
-}
-
-/* Animation */
-
-@keyframes listIn {
-  to { opacity: 1; transform: translateY(0); }
-}
+/* Footer */
 
 footer {
   padding: 20px;
@@ -173,10 +151,10 @@ footer {
 
   <div class="upload-box" id="dropZone">
     <h2>Datei hochladen</h2>
-    <p>HTML, Markdown oder ZIP hierher ziehen oder klicken</p>
+    <p>HTML oder ZIP hierher ziehen oder klicken</p>
   </div>
 
-  <input type="file" id="fileInput" accept=".html,.zip,.md" hidden>
+  <input type="file" id="fileInput" accept=".html,.zip" hidden>
 
   <ul class="list" id="fileList"></ul>
 
@@ -184,36 +162,26 @@ footer {
 
 <footer>Easy HTML – Version 3</footer>
 
-<!-- HTML Fullscreen -->
 <div id="viewer">
   <iframe id="viewerFrame"></iframe>
-  <button class="closeBtn" id="closeHtml">Schließen</button>
-</div>
-
-<!-- Markdown Viewer -->
-<div id="mdViewer">
-  <div id="mdContent" style="max-width:800px;margin:auto;"></div>
-  <button class="closeBtn" id="closeMd">Schließen</button>
+  <button id="closeViewer">Schließen</button>
 </div>
 
 <script>
 "use strict";
 
-const state = { files: {} };
+const state = {
+  files: {}
+};
 
 const dropZone = document.getElementById("dropZone");
 const fileInput = document.getElementById("fileInput");
 const fileList = document.getElementById("fileList");
-
 const viewer = document.getElementById("viewer");
 const viewerFrame = document.getElementById("viewerFrame");
-const closeHtml = document.getElementById("closeHtml");
+const closeViewer = document.getElementById("closeViewer");
 
-const mdViewer = document.getElementById("mdViewer");
-const mdContent = document.getElementById("mdContent");
-const closeMd = document.getElementById("closeMd");
-
-/* Upload */
+/* Upload Events */
 
 dropZone.addEventListener("click", () => fileInput.click());
 
@@ -243,18 +211,19 @@ async function handleFile(file) {
 
   const ext = file.name.split(".").pop().toLowerCase();
 
-  if (ext === "html" || ext === "md") {
-    addFile(file.name.replace(/\.(html|md)$/i, ""), file, ext);
+  if (ext === "html") {
+    addFile(file.name.replace(".html", ""), {
+      async async() { return file; }
+    });
   }
 
   if (ext === "zip") {
     const zip = await JSZip.loadAsync(file);
     for (const key in zip.files) {
       const entry = zip.files[key];
-      if (!entry.dir && (key.endsWith(".html") || key.endsWith(".md"))) {
-        const blob = await entry.async("blob");
-        const title = key.split("/").pop().replace(/\.(html|md)$/i, "");
-        addFile(title, blob, key.endsWith(".md") ? "md" : "html");
+      if (!entry.dir && key.toLowerCase().endsWith(".html")) {
+        const title = key.split("/").pop().replace(".html", "");
+        addFile(title, entry);
       }
     }
   }
@@ -262,8 +231,8 @@ async function handleFile(file) {
   renderList();
 }
 
-function addFile(title, fileObj, type) {
-  state.files[title] = { file: fileObj, type };
+function addFile(title, fileObj) {
+  state.files[title] = fileObj;
 }
 
 /* Rendering */
@@ -271,51 +240,26 @@ function addFile(title, fileObj, type) {
 function renderList() {
   fileList.innerHTML = "";
 
-  Object.keys(state.files).forEach((title, index) => {
+  Object.keys(state.files).forEach(title => {
     const li = document.createElement("li");
     li.textContent = title;
-    li.style.animationDelay = `${index * 0.05}s`;
-    li.onclick = () => openFile(title);
+
+    li.onclick = async () => {
+      const blob = await state.files[title].async("blob");
+      const url = URL.createObjectURL(blob);
+      viewerFrame.src = url;
+      viewer.style.display = "block";
+    };
+
     fileList.appendChild(li);
   });
 }
 
-/* Öffnen */
+/* Viewer schließen */
 
-async function openFile(title) {
-  const item = state.files[title];
-
-  if (item.type === "html") {
-    const blob = item.file instanceof Blob ? item.file : await item.file;
-    const url = URL.createObjectURL(blob);
-    viewerFrame.src = url;
-    viewer.style.display = "block";
-
-    if (viewer.requestFullscreen) {
-      viewer.requestFullscreen();
-    }
-  }
-
-  if (item.type === "md") {
-    const text = await item.file.text();
-    mdContent.innerHTML = marked.parse(text);
-    mdViewer.style.display = "block";
-  }
-}
-
-/* Schließen */
-
-closeHtml.addEventListener("click", async () => {
-  if (document.fullscreenElement) {
-    await document.exitFullscreen();
-  }
+closeViewer.addEventListener("click", () => {
   viewer.style.display = "none";
   viewerFrame.src = "";
-});
-
-closeMd.addEventListener("click", () => {
-  mdViewer.style.display = "none";
-  mdContent.innerHTML = "";
 });
 </script>
 
