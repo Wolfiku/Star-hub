@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Easy HTML – Version 3</title>
+<title>Easy HTML Reader – Version 3</title>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.0/jszip.min.js"></script>
 
@@ -32,196 +32,59 @@ body.dark {
   --preview-bg: rgba(28,28,30,0.85);
 }
 
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
-  transition: background 0.3s, color 0.3s, border-color 0.3s;
-}
+* { box-sizing: border-box; margin:0; padding:0; font-family: -apple-system,BlinkMacSystemFont,"SF Pro Text",system-ui,sans-serif; transition: background 0.3s,color 0.3s,border-color 0.3s; }
 
-body {
-  background: var(--bg);
-  color: var(--text);
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-}
+body { background: var(--bg); color: var(--text); min-height: 100vh; display:flex; flex-direction:column; }
 
-header {
-  padding: 40px 20px 20px;
-  text-align: center;
-  font-size: 32px;
-  font-weight: 600;
-  letter-spacing: -0.5px;
-}
+header { padding:40px 20px 20px; text-align:center; font-size:32px; font-weight:600; letter-spacing:-0.5px; }
 
-.container {
-  flex: 1;
-  max-width: 800px;
-  width: 100%;
-  margin: auto;
-  padding: 20px;
-  animation: fadeIn 0.5s ease;
-}
+.container { flex:1; max-width:800px; width:100%; margin:auto; padding:20px; animation: fadeIn 0.5s ease; }
 
-.upload-box {
-  border: 2px dashed var(--border);
-  background: var(--card);
-  border-radius: 18px;
-  padding: 60px 20px;
-  text-align: center;
-  cursor: pointer;
-  transition: 0.3s ease, transform 0.3s ease, box-shadow 0.3s ease;
-}
+.upload-box { border:2px dashed var(--border); background:var(--card); border-radius:18px; padding:60px 20px; text-align:center; cursor:pointer; transition:0.3s ease, transform 0.3s ease, box-shadow 0.3s ease; }
+.upload-box:hover { border-color:var(--accent); transform:translateY(-5px); box-shadow:0 8px 20px rgba(0,0,0,0.15); animation:pulse 1.2s infinite; }
+.upload-box.dragover { border-color: var(--accent); background: #d0e8ff33; }
+.upload-box h2 { font-size:20px; margin-bottom:8px; }
+.upload-box p { font-size:14px; color:var(--sub); }
 
-.upload-box:hover {
-  border-color: var(--accent);
-  transform: translateY(-5px);
-  box-shadow: 0 8px 20px rgba(0,0,0,0.15);
-  animation: pulse 1.2s infinite;
-}
+.list { margin-top:30px; list-style:none; }
 
-.upload-box.dragover {
-  border-color: var(--accent);
-  background: #d0e8ff33;
-}
+.list li { background:var(--card); border:1px solid var(--border); padding:16px 18px; border-radius:14px; margin-bottom:12px; cursor:pointer; transition:0.3s ease, transform 0.3s ease; opacity:0; transform:translateX(-20px); animation:listItemIn 0.5s forwards; position:relative; }
 
-.upload-box h2 { font-size: 20px; margin-bottom: 8px; }
-.upload-box p { font-size: 14px; color: var(--sub); }
+.preview-btn { position:absolute; right:16px; top:16px; background:var(--accent); color:white; border:none; border-radius:12px; padding:3px 8px; font-size:12px; cursor:pointer; transition: transform 0.2s ease, box-shadow 0.2s ease; }
+.preview-btn:hover { transform:scale(1.1); box-shadow:0 4px 12px rgba(0,0,0,0.3); }
 
-.list {
-  margin-top: 30px;
-  list-style: none;
-}
+#viewer, #codePreviewOverlay { position:fixed; inset:0; display:none; opacity:0; transform:scale(0.95); transition: opacity 0.3s ease, transform 0.3s ease; z-index:10; border-radius:6px; }
 
-.list li {
-  background: var(--card);
-  border: 1px solid var(--border);
-  padding: 16px 18px;
-  border-radius: 14px;
-  margin-bottom: 12px;
-  cursor: pointer;
-  transition: 0.3s ease, transform 0.3s ease;
-  opacity: 0;
-  transform: translateX(-20px);
-  animation: listItemIn 0.5s forwards;
-  position: relative;
-}
-
-.preview-btn {
-  position: absolute;
-  right: 16px;
-  top: 16px;
-  background: var(--accent);
-  color: white;
-  border: none;
-  border-radius: 12px;
-  padding: 3px 8px;
-  font-size: 12px;
-  cursor: pointer;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-.preview-btn:hover { transform: scale(1.1); box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
-
-/* Viewer */
-#viewer, #codePreviewOverlay {
-  position: fixed;
-  inset: 0;
-  display: none;
-  opacity: 0;
-  transform: scale(0.95);
-  transition: opacity 0.3s ease, transform 0.3s ease;
-  z-index: 10;
-  border-radius: 6px;
-}
-
-#viewer.show, #codePreviewOverlay.show {
-  display: block;
-  opacity: 1;
-  transform: scale(1);
-}
+#viewer.show, #codePreviewOverlay.show { display:block; opacity:1; transform:scale(1); }
 
 #viewer { background: var(--viewer-bg); }
-#viewer iframe { width: 100%; height: 100%; border: none; border-radius: 6px; }
+#viewer iframe { width:100%; height:100%; border:none; border-radius:6px; }
 
-#codePreviewOverlay {
-  background: var(--preview-bg);
-  padding: 20px;
-  overflow: auto;
-  color: #fff;
-  font-family: monospace;
-  font-size: 13px;
-}
+#codePreviewOverlay { background: var(--preview-bg); padding:20px; overflow:auto; color:#fff; font-family:monospace; font-size:13px; }
 
-/* Close Buttons */
-#closeViewer, #closePreview {
-  position: absolute;
-  bottom: 20px;
-  right: 20px;
-  background: var(--danger);
-  color: white;
-  border: none;
-  padding: 10px 16px;
-  border-radius: 20px;
-  font-size: 14px;
-  cursor: pointer;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-#closeViewer:hover, #closePreview:hover { transform: scale(1.1); box-shadow: 0 6px 16px rgba(0,0,0,0.4); }
+#closeViewer, #closePreview { position:sticky; bottom:20px; margin-left:auto; display:block; background:var(--danger); color:white; border:none; padding:10px 16px; border-radius:20px; font-size:14px; cursor:pointer; box-shadow:0 4px 12px rgba(0,0,0,0.3); transition: transform 0.2s ease, box-shadow 0.2s ease; width:max-content; }
+#closeViewer:hover,#closePreview:hover { transform:scale(1.1); box-shadow:0 6px 16px rgba(0,0,0,0.4); }
 
-/* Footer */
-footer { padding: 20px; text-align: center; font-size: 13px; color: var(--sub); }
+footer { padding:20px; text-align:center; font-size:13px; color:var(--sub); }
 
 /* Live Editor Button unten rechts */
-#liveBtn {
-  position: fixed;
-  bottom: 20px;
-  right: 20px;
-  background: var(--accent);
-  color: white;
-  border: none;
-  padding: 12px 16px;
-  border-radius: 20px;
-  cursor: pointer;
-  z-index: 15;
-  font-size: 14px;
-  transition: transform 0.2s ease;
-}
-#liveBtn:hover { transform: scale(1.1); }
+#liveBtn { position:fixed; bottom:20px; right:20px; background:var(--accent); color:white; border:none; padding:12px 16px; border-radius:20px; cursor:pointer; z-index:15; font-size:14px; transition: transform 0.2s ease; }
+#liveBtn:hover { transform:scale(1.1); }
 
-#liveEditor {
-  position: fixed;
-  bottom: 70px;
-  right: 20px;
-  width: 400px;
-  max-width: 90vw;
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 10px;
-  display: none;
-  flex-direction: column;
-  z-index: 15;
-}
-#liveEditor textarea {
-  width: 100%; height: 150px; background: var(--bg); color: var(--text);
-  border: 1px solid var(--border); border-radius: 8px; font-family: monospace; padding: 8px;
-  resize: vertical;
-}
-#runBtn { margin-top: 8px; background: var(--accent); color: white; border: none; padding: 8px 12px; border-radius: 12px; cursor: pointer; align-self: flex-end; }
-#runBtn:hover { transform: scale(1.05); }
+#liveEditor { position:fixed; bottom:70px; right:20px; width:400px; max-width:90vw; background:var(--card); border:1px solid var(--border); border-radius:12px; padding:10px; display:none; flex-direction:column; z-index:15; }
+#liveEditor textarea { width:100%; height:150px; background:var(--bg); color:var(--text); border:1px solid var(--border); border-radius:8px; font-family:monospace; padding:8px; resize:vertical; }
+#runBtn { margin-top:8px; background:var(--accent); color:white; border:none; padding:8px 12px; border-radius:12px; cursor:pointer; align-self:flex-end; }
+#runBtn:hover { transform:scale(1.05); }
 
-/* Animationen */
-@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes fadeIn { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
 @keyframes pulse { 0%,100%{box-shadow:0 0 0 rgba(0,0,0,0.15);} 50%{box-shadow:0 0 20px rgba(0,0,0,0.25);} }
 @keyframes listItemIn { to{opacity:1; transform:translateX(0);} }
+
 </style>
 </head>
 <body>
 
-<header>Easy HTML</header>
+<header>Easy HTML Reader</header>
 
 <div class="container">
   <div class="upload-box" id="dropZone">
@@ -233,21 +96,18 @@ footer { padding: 20px; text-align: center; font-size: 13px; color: var(--sub); 
   <ul class="list" id="fileList"></ul>
 </div>
 
-<footer>Easy HTML – Version 3</footer>
+<footer>Easy HTML Reader – Version 3</footer>
 
-<!-- Viewer -->
 <div id="viewer">
   <iframe id="viewerFrame"></iframe>
   <button id="closeViewer">Schließen</button>
 </div>
 
-<!-- Code Preview Overlay -->
 <div id="codePreviewOverlay">
   <pre id="codePreviewContent"></pre>
   <button id="closePreview">Schließen</button>
 </div>
 
-<!-- Live Code Editor -->
 <button id="liveBtn">Live Code</button>
 <div id="liveEditor">
   <textarea id="liveCode" placeholder="HTML hier eingeben..."></textarea>
@@ -256,44 +116,40 @@ footer { padding: 20px; text-align: center; font-size: 13px; color: var(--sub); 
 
 <script>
 "use strict";
-
-const state = {};
-const dropZone = document.getElementById("dropZone");
-const fileInput = document.getElementById("fileInput");
-const fileList = document.getElementById("fileList");
-
-const viewer = document.getElementById("viewer");
-const viewerFrame = document.getElementById("viewerFrame");
-const closeViewer = document.getElementById("closeViewer");
-
-const codePreviewOverlay = document.getElementById("codePreviewOverlay");
-const codePreviewContent = document.getElementById("codePreviewContent");
-const closePreview = document.getElementById("closePreview");
-
-const liveBtn = document.getElementById("liveBtn");
-const liveEditor = document.getElementById("liveEditor");
-const liveCode = document.getElementById("liveCode");
-const runBtn = document.getElementById("runBtn");
+const state={};
+const dropZone=document.getElementById("dropZone");
+const fileInput=document.getElementById("fileInput");
+const fileList=document.getElementById("fileList");
+const viewer=document.getElementById("viewer");
+const viewerFrame=document.getElementById("viewerFrame");
+const closeViewer=document.getElementById("closeViewer");
+const codePreviewOverlay=document.getElementById("codePreviewOverlay");
+const codePreviewContent=document.getElementById("codePreviewContent");
+const closePreview=document.getElementById("closePreview");
+const liveBtn=document.getElementById("liveBtn");
+const liveEditor=document.getElementById("liveEditor");
+const liveCode=document.getElementById("liveCode");
+const runBtn=document.getElementById("runBtn");
 
 /* Dark/Light Mode */
-const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+const mediaQuery=window.matchMedia('(prefers-color-scheme: dark)');
 function updateTheme(e){ if(e.matches) document.body.classList.add('dark'); else document.body.classList.remove('dark'); }
-mediaQuery.addEventListener('change', updateTheme);
+mediaQuery.addEventListener('change',updateTheme);
 updateTheme(mediaQuery);
 
 /* Upload Events */
-dropZone.addEventListener("click", () => fileInput.click());
-dropZone.addEventListener("dragover", e => { e.preventDefault(); dropZone.classList.add("dragover"); });
-dropZone.addEventListener("dragleave", () => dropZone.classList.remove("dragover"));
-dropZone.addEventListener("drop", e => { e.preventDefault(); dropZone.classList.remove("dragover"); handleFile(e.dataTransfer.files[0]); });
-fileInput.addEventListener("change", e => handleFile(e.target.files[0]));
+dropZone.addEventListener("click",()=>fileInput.click());
+dropZone.addEventListener("dragover",e=>{e.preventDefault(); dropZone.classList.add("dragover");});
+dropZone.addEventListener("dragleave",()=>dropZone.classList.remove("dragover"));
+dropZone.addEventListener("drop",e=>{e.preventDefault(); dropZone.classList.remove("dragover"); handleFile(e.dataTransfer.files[0]);});
+fileInput.addEventListener("change",e=>handleFile(e.target.files[0]));
 
 /* Handle Files */
 async function handleFile(file){
   if(!file) return;
   const ext=file.name.split(".").pop().toLowerCase();
   if(ext==="html") addFile(file.name.replace(".html",""),{async async(){return file;}});
-  if(ext==="zip"){ const zip = await JSZip.loadAsync(file); for(const key in zip.files){ const entry=zip.files[key]; if(!entry.dir && key.toLowerCase().endsWith(".html")) addFile(key.split("/").pop().replace(".html",""),entry); } }
+  if(ext==="zip"){const zip=await JSZip.loadAsync(file); for(const key in zip.files){ const entry=zip.files[key]; if(!entry.dir && key.toLowerCase().endsWith(".html")) addFile(key.split("/").pop().replace(".html",""),entry);}}
   renderList();
 }
 
@@ -305,7 +161,6 @@ function renderList(){
     const li=document.createElement("li");
     li.textContent=title;
     li.style.animationDelay=`${index*0.1}s`;
-
     const btn=document.createElement("button");
     btn.textContent="Preview";
     btn.className="preview-btn";
@@ -325,6 +180,7 @@ function renderList(){
       viewerFrame.src=url;
       viewer.classList.add("show");
       liveBtn.style.display="none";
+      liveEditor.style.display="none";
     };
 
     fileList.appendChild(li);
@@ -350,7 +206,9 @@ runBtn.addEventListener("click",()=>{
   viewerFrame.src=url;
   viewer.classList.add("show");
   liveBtn.style.display="none";
+  liveEditor.style.display="none";
 });
 </script>
+
 </body>
 </html>
