@@ -9,7 +9,6 @@
 
 <style>
 :root {
-  /* Light Mode Farben */
   --bg: #f5f5f7;
   --card: #ffffff;
   --border: #e5e5ea;
@@ -62,7 +61,7 @@ header {
   width: 100%;
   margin: auto;
   padding: 20px;
-  animation: fadeIn 0.6s ease;
+  animation: fadeIn 0.5s ease;
 }
 
 /* Upload Feld */
@@ -73,12 +72,14 @@ header {
   padding: 60px 20px;
   text-align: center;
   cursor: pointer;
-  transition: 0.3s ease, transform 0.2s ease;
+  transition: 0.3s ease, transform 0.3s ease, box-shadow 0.3s ease;
 }
 
 .upload-box:hover {
   border-color: var(--accent);
-  transform: translateY(-3px);
+  transform: translateY(-5px);
+  box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+  animation: pulse 1.2s infinite;
 }
 
 .upload-box.dragover {
@@ -109,13 +110,16 @@ header {
   border-radius: 14px;
   margin-bottom: 12px;
   cursor: pointer;
-  transition: 0.2s ease, transform 0.15s ease;
+  transition: 0.3s ease, transform 0.3s ease;
+  opacity: 0;
+  transform: translateX(-20px);
+  animation: listItemIn 0.5s forwards;
 }
 
 .list li:hover {
   border-color: var(--accent);
   background: #fafafa44;
-  transform: translateX(3px);
+  transform: translateX(5px);
 }
 
 /* Viewer */
@@ -125,7 +129,14 @@ header {
   background: var(--viewer-bg);
   display: none;
   opacity: 0;
-  animation: fadeInViewer 0.3s forwards;
+  transform: scale(0.95);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+#viewer.show {
+  display: block;
+  opacity: 1;
+  transform: scale(1);
 }
 
 #viewer iframe {
@@ -170,9 +181,13 @@ footer {
   to { opacity: 1; transform: translateY(0); }
 }
 
-@keyframes fadeInViewer {
-  from { opacity: 0; }
-  to { opacity: 1; opacity: 1; }
+@keyframes pulse {
+  0%, 100% { box-shadow: 0 0 0 rgba(0,0,0,0.15); }
+  50% { box-shadow: 0 0 20px rgba(0,0,0,0.25); }
+}
+
+@keyframes listItemIn {
+  to { opacity: 1; transform: translateX(0); }
 }
 </style>
 </head>
@@ -203,9 +218,7 @@ footer {
 <script>
 "use strict";
 
-const state = {
-  files: {}
-};
+const state = { files: {} };
 
 const dropZone = document.getElementById("dropZone");
 const fileInput = document.getElementById("fileInput");
@@ -214,22 +227,20 @@ const viewer = document.getElementById("viewer");
 const viewerFrame = document.getElementById("viewerFrame");
 const closeViewer = document.getElementById("closeViewer");
 
-/* Dark/Light Mode automatisch */
-const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-if(prefersDark) document.body.classList.add('dark');
+/* Dark/Light Mode dynamisch */
+const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+function updateTheme(e) {
+  if(e.matches) document.body.classList.add('dark');
+  else document.body.classList.remove('dark');
+}
+mediaQuery.addEventListener('change', updateTheme);
+updateTheme(mediaQuery);
 
 /* Upload Events */
 dropZone.addEventListener("click", () => fileInput.click());
-dropZone.addEventListener("dragover", e => {
-  e.preventDefault();
-  dropZone.classList.add("dragover");
-});
+dropZone.addEventListener("dragover", e => { e.preventDefault(); dropZone.classList.add("dragover"); });
 dropZone.addEventListener("dragleave", () => dropZone.classList.remove("dragover"));
-dropZone.addEventListener("drop", e => {
-  e.preventDefault();
-  dropZone.classList.remove("dragover");
-  handleFile(e.dataTransfer.files[0]);
-});
+dropZone.addEventListener("drop", e => { e.preventDefault(); dropZone.classList.remove("dragover"); handleFile(e.dataTransfer.files[0]); });
 fileInput.addEventListener("change", e => handleFile(e.target.files[0]));
 
 /* Datei Verarbeitung */
@@ -238,9 +249,7 @@ async function handleFile(file) {
   const ext = file.name.split(".").pop().toLowerCase();
 
   if (ext === "html") {
-    addFile(file.name.replace(".html", ""), {
-      async async() { return file; }
-    });
+    addFile(file.name.replace(".html", ""), { async async() { return file; } });
   }
 
   if (ext === "zip") {
@@ -257,22 +266,21 @@ async function handleFile(file) {
   renderList();
 }
 
-function addFile(title, fileObj) {
-  state.files[title] = fileObj;
-}
+function addFile(title, fileObj) { state.files[title] = fileObj; }
 
 /* Rendering */
 function renderList() {
   fileList.innerHTML = "";
-  Object.keys(state.files).forEach(title => {
+  Object.keys(state.files).forEach((title, index) => {
     const li = document.createElement("li");
     li.textContent = title;
+    li.style.animationDelay = `${index * 0.1}s`; // leichte Stagger-Animation
 
     li.onclick = async () => {
       const blob = await state.files[title].async("blob");
       const url = URL.createObjectURL(blob);
       viewerFrame.src = url;
-      viewer.style.display = "block";
+      viewer.classList.add('show');
     };
 
     fileList.appendChild(li);
@@ -281,8 +289,8 @@ function renderList() {
 
 /* Viewer schließen */
 closeViewer.addEventListener("click", () => {
-  viewer.style.display = "none";
-  viewerFrame.src = "";
+  viewer.classList.remove('show');
+  setTimeout(() => { viewerFrame.src = ""; }, 300);
 });
 </script>
 
