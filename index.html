@@ -32,15 +32,15 @@ body.dark {
   --preview-bg: rgba(28,28,30,0.85);
 }
 
-* { box-sizing: border-box; margin:0; padding:0; font-family: -apple-system,BlinkMacSystemFont,"SF Pro Text",system-ui,sans-serif; transition: background 0.3s,color 0.3s,border-color 0.3s; }
+* { box-sizing: border-box; margin:0; padding:0; font-family: -apple-system,BlinkMacSystemFont,"SF Pro Text",system-ui,sans-serif; transition: background 0.2s,color 0.2s,border-color 0.2s; }
 
 body { background: var(--bg); color: var(--text); min-height: 100vh; display:flex; flex-direction:column; }
 
 header { padding:40px 20px 20px; text-align:center; font-size:32px; font-weight:600; letter-spacing:-0.5px; }
 
-.container { flex:1; max-width:800px; width:100%; margin:auto; padding:20px; animation: fadeIn 0.5s ease; }
+.container { flex:1; max-width:800px; width:100%; margin:auto; padding:20px; animation: fadeIn 0.3s ease; }
 
-.upload-box { border:2px dashed var(--border); background:var(--card); border-radius:18px; padding:60px 20px; text-align:center; cursor:pointer; transition:0.3s ease, transform 0.3s ease, box-shadow 0.3s ease; }
+.upload-box { border:2px dashed var(--border); background:var(--card); border-radius:18px; padding:60px 20px; text-align:center; cursor:pointer; transition:0.2s ease, transform 0.2s ease, box-shadow 0.2s ease; }
 .upload-box:hover { border-color:var(--accent); transform:translateY(-5px); box-shadow:0 8px 20px rgba(0,0,0,0.15); animation:pulse 1.2s infinite; }
 .upload-box.dragover { border-color: var(--accent); background: #d0e8ff33; }
 .upload-box h2 { font-size:20px; margin-bottom:8px; }
@@ -48,12 +48,12 @@ header { padding:40px 20px 20px; text-align:center; font-size:32px; font-weight:
 
 .list { margin-top:30px; list-style:none; }
 
-.list li { background:var(--card); border:1px solid var(--border); padding:16px 18px; border-radius:14px; margin-bottom:12px; cursor:pointer; transition:0.3s ease, transform 0.3s ease; opacity:0; transform:translateX(-20px); animation:listItemIn 0.5s forwards; position:relative; }
+.list li { background:var(--card); border:1px solid var(--border); padding:16px 18px; border-radius:14px; margin-bottom:12px; cursor:pointer; transition:0.2s ease, transform 0.2s ease; opacity:0; transform:translateX(-20px); animation:listItemIn 0.3s forwards; position:relative; }
 
 .preview-btn { position:absolute; right:16px; top:16px; background:var(--accent); color:white; border:none; border-radius:12px; padding:3px 8px; font-size:12px; cursor:pointer; transition: transform 0.2s ease, box-shadow 0.2s ease; }
 .preview-btn:hover { transform:scale(1.1); box-shadow:0 4px 12px rgba(0,0,0,0.3); }
 
-#viewer, #codePreviewOverlay { position:fixed; inset:0; display:none; opacity:0; transform:scale(0.95); transition: opacity 0.3s ease, transform 0.3s ease; z-index:10; border-radius:6px; }
+#viewer, #codePreviewOverlay { position:fixed; inset:0; display:none; opacity:0; transform:scale(0.95); transition: opacity 0.2s ease, transform 0.2s ease; z-index:10; border-radius:6px; }
 
 #viewer.show, #codePreviewOverlay.show { display:block; opacity:1; transform:scale(1); }
 
@@ -67,7 +67,6 @@ header { padding:40px 20px 20px; text-align:center; font-size:32px; font-weight:
 
 footer { padding:20px; text-align:center; font-size:13px; color:var(--sub); }
 
-/* Live Editor Button unten rechts */
 #liveBtn { position:fixed; bottom:20px; right:20px; background:var(--accent); color:white; border:none; padding:12px 16px; border-radius:20px; cursor:pointer; z-index:15; font-size:14px; transition: transform 0.2s ease; }
 #liveBtn:hover { transform:scale(1.1); }
 
@@ -160,7 +159,7 @@ function renderList(){
   Object.keys(state).forEach((title,index)=>{
     const li=document.createElement("li");
     li.textContent=title;
-    li.style.animationDelay=`${index*0.1}s`;
+    li.style.animationDelay=`${index*0.05}s`;
     const btn=document.createElement("button");
     btn.textContent="Preview";
     btn.className="preview-btn";
@@ -172,6 +171,7 @@ function renderList(){
       codePreviewContent.textContent=await blob.text();
       codePreviewOverlay.classList.add("show");
       liveBtn.style.display="none";
+      liveEditor.style.display="none";
     };
 
     li.onclick=async()=>{
@@ -180,7 +180,7 @@ function renderList(){
       viewerFrame.src=url;
       viewer.classList.add("show");
       liveBtn.style.display="none";
-      liveEditor.style.display="none";
+      liveEditor.style.display="none"; // fix: hide live editor
     };
 
     fileList.appendChild(li);
@@ -191,7 +191,7 @@ function renderList(){
 closeViewer.addEventListener("click",()=>{
   viewer.classList.remove("show");
   liveBtn.style.display="block";
-  setTimeout(()=>{ viewerFrame.src=""; },300);
+  setTimeout(()=>{ viewerFrame.src=""; },200);
 });
 closePreview.addEventListener("click",()=>{
   codePreviewOverlay.classList.remove("show");
@@ -206,7 +206,7 @@ runBtn.addEventListener("click",()=>{
   viewerFrame.src=url;
   viewer.classList.add("show");
   liveBtn.style.display="none";
-  liveEditor.style.display="none";
+  liveEditor.style.display="none"; // fix: hide live editor
 });
 </script>
 
